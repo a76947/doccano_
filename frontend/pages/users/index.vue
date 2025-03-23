@@ -1,7 +1,7 @@
 <template>
   <v-card>
     <v-card-title v-if="isStaff">
-      <v-btn class="text-capitalize" color="primary" @click.stop="$router.push('projects/create')">
+      <v-btn class="text-capitalize" color="primary" @click.stop="$router.push('/users/create')">
         {{ $t('generic.create') }}
       </v-btn>
       <v-btn class="text-capitalize ms-2" color="primary" :disabled="!canEdit" @click.stop="edit">
