@@ -18,4 +18,9 @@ export class APIAuthRepository {
     const response = await this.request.get(url)
     return response.data
   }
+
+  async createUser(userData: { username: string; password: string }): Promise<void> {
+    const url = '/users/create'
+    await this.request.post(url, userData)
+  }
 }
