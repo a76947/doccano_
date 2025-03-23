@@ -5,6 +5,8 @@ from rest_framework import filters, generics, status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import RetrieveDestroyAPIView
+from django.contrib.auth.models import User
 
 from .serializers import UserSerializer
 from projects.permissions import IsProjectAdmin
@@ -41,3 +43,11 @@ class UserCreation(generics.CreateAPIView):
     def perform_create(self, serializer):
         user = serializer.save(self.request)
         return user
+
+
+
+class UserDetail(RetrieveDestroyAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated & IsAdminUser]
+    lookup_field = 'id'
