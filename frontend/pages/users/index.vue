@@ -17,7 +17,6 @@
         >
           Edit
         </v-btn>
-        <!--  teste -->
         <v-btn
           class="text-capitalize ms-2"
           :disabled="!canDelete"
