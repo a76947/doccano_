@@ -55,14 +55,6 @@
       </v-list>
     </v-menu>
     <!-- Register button for unauthenticated users -->
-    <v-btn
-    v-if="!isAuthenticated"
-        color="primary"
-        class="mr-3"
-        @click="$router.push(localePath('/users/create'))"
-      >
-        {{ $t('Register') || 'Register' }}
-    </v-btn>
     <v-btn v-if="!isAuthenticated" outlined @click="$router.push(localePath('/auth'))">
       {{ $t('user.login') }}
     </v-btn>
