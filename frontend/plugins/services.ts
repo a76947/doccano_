@@ -10,6 +10,7 @@ import { SegmentationApplicationService } from '@/services/application/tasks/seg
 import { SequenceLabelingApplicationService } from '@/services/application/tasks/sequenceLabeling/sequenceLabelingApplicationService'
 import { UserApplicationService } from '~/services/application/user/userAplicationService'
 
+
 export interface Services {
   categoryType: LabelApplicationService
   spanType: LabelApplicationService
