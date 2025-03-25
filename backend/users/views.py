@@ -1,12 +1,11 @@
-from dj_rest_auth.registration.serializers import RegisterSerializer
+from .serializers import CustomRegisterSerializer, UserSerializer
 from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from .serializers import UserSerializer
+from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from projects.permissions import IsProjectAdmin
 
 
@@ -28,7 +27,7 @@ class Users(generics.ListAPIView):
 
 
 class UserCreation(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
+    serializer_class = CustomRegisterSerializer
     permission_classes = [IsAuthenticated & IsAdminUser]
 
     def create(self, request, *args, **kwargs):
@@ -36,12 +35,11 @@ class UserCreation(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        
-        # user talvez seja (user, ) se o serializer.save(self.request) retornar uma tupla.
-        # Nesse caso, faça: user = user[0]
+
+        # Se o serializer retornar uma tupla, pegamos apenas o primeiro item
         if isinstance(user, tuple):
             user = user[0]
-        
+
         return Response(
             UserSerializer(user).data,
             status=status.HTTP_201_CREATED,
@@ -49,12 +47,12 @@ class UserCreation(generics.CreateAPIView):
         )
 
     def perform_create(self, serializer):
-        user = serializer.save(self.request)
-        return user
+        return serializer.save(self.request)
 
 
-# NOVA CLASSE p/ ver/editar um usuário específico
-class UserRetrieveUpdate(generics.RetrieveUpdateAPIView):
+# Classe para visualizar, atualizar e deletar um usuário específico
+class UserRetrieveUpdateDestroy(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated & IsAdminUser]
+    lookup_field = "pk"  # Mantendo a consistência com os padrões Django
