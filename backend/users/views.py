@@ -1,11 +1,22 @@
+
 from .serializers import CustomRegisterSerializer, UserSerializer
+
+from .serializers import CustomRegisterSerializer
+
 from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
 from rest_framework.generics import RetrieveUpdateDestroyAPIView
+
+from rest_framework.generics import RetrieveDestroyAPIView
+from django.contrib.auth.models import User
+
+from .serializers import UserSerializer
+
 from projects.permissions import IsProjectAdmin
 
 
@@ -47,6 +58,7 @@ class UserCreation(generics.CreateAPIView):
         )
 
     def perform_create(self, serializer):
+
         return serializer.save(self.request)
 
 
@@ -56,3 +68,15 @@ class UserRetrieveUpdateDestroy(RetrieveUpdateDestroyAPIView):
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated & IsAdminUser]
     lookup_field = "pk"  # Mantendo a consistência com os padrões Django
+
+        user = serializer.save(self.request)
+        return user
+
+
+
+class UserDetail(RetrieveDestroyAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated & IsAdminUser]
+    lookup_field = 'id'
+

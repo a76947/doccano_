@@ -29,6 +29,14 @@
     >
       {{ $t('header.projects') }}
     </v-btn>
+    <v-btn
+      v-if="isAuthenticated"
+      text
+      class="text-capitalize"
+      @click="$router.push(localePath('/users'))"
+    >
+      {{ $t('manageUser') || 'Manage Users' }}
+    </v-btn>
     <v-menu v-if="!isAuthenticated" open-on-hover offset-y>
       <template #activator="{ on }">
         <v-btn text v-on="on">
@@ -47,14 +55,6 @@
       </v-list>
     </v-menu>
     <!-- Register button for unauthenticated users -->
-    <v-btn
-    v-if="!isAuthenticated"
-        color="primary"
-        class="mr-3"
-        @click="$router.push(localePath('/users/create'))"
-      >
-        {{ $t('Register') || 'Register' }}
-    </v-btn>
     <v-btn v-if="!isAuthenticated" outlined @click="$router.push(localePath('/auth'))">
       {{ $t('user.login') }}
     </v-btn>
@@ -69,17 +69,6 @@
         <v-list-item>
           <v-list-item-content>
             <v-switch :input-value="isRTL" :label="direction" class="ms-1" @change="toggleRTL" />
-          </v-list-item-content>
-        </v-list-item>
-      <!-- butao novo para gerir os utilizadores -->
-        <v-list-item @click="manageUsers"> <!-- metodo para ir para outra pagina-->
-          <v-list-item-icon>
-            <v-icon>{{ mdiCog }}</v-icon> <!-- icone que aparece -->
-          </v-list-item-icon>
-          <v-list-item-content>
-            <v-list-item-title>
-              {{ $t('manageUser') }} <!--nome que aparece-->
-            </v-list-item-title>
           </v-list-item-content>
         </v-list-item>
         <!-- acaba aqui -->
