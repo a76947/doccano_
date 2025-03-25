@@ -1,3 +1,5 @@
+// ~/store/auth.js
+
 export const state = () => ({
   username: null,
   id: null,
@@ -39,33 +41,52 @@ export const getters = {
 }
 
 export const actions = {
+  // Exemplo de login (chama repositório)
   async authenticateUser({ commit }, authData) {
     try {
       await this.$repositories.auth.login(authData.username, authData.password)
       commit('setAuthenticated', true)
+      // Se quiseres, chama initAuth() para puxar perfil do user
     } catch (error) {
       throw new Error('The credential is invalid')
     }
   },
-  async fetchSocialLink() {
-    return await this.$repositories.auth.socialLink()
-  },
+
+  // Fetch do perfil do user logado
   async initAuth({ commit }) {
     try {
-      const user = await this.$repositories.user.getProfile()
+      const user = await this.$repositories.user.getProfile()  // /v1/me
       commit('setAuthenticated', true)
       commit('setUsername', user.username)
       commit('setUserId', user.id)
       commit('setIsStaff', user.isStaff)
-    } catch {
+    } catch (error) {
       commit('setAuthenticated', false)
       commit('setIsStaff', false)
+      commit('clearUsername')
+      commit('setUserId', null)
     }
   },
+
+  // Logout
   async logout({ commit }) {
-    await this.$repositories.auth.logout()
+    try {
+      // Chama logout no back-end
+      await this.$repositories.auth.logout()
+    } catch (error) {
+      console.error('Erro ao deslogar no backend:', error)
+    }
+
+    // Limpa o estado local
     commit('setAuthenticated', false)
     commit('setIsStaff', false)
     commit('clearUsername')
+    commit('setUserId', null)
+
+    // Redirecionar para /login
+    // Forma simples: forçar reload e levar para /login
+    if (process.browser) {
+      window.location = '/auth'
+    }
   }
 }

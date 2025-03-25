@@ -5,8 +5,6 @@ from rest_framework import filters, generics, status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import RetrieveDestroyAPIView
-from django.contrib.auth.models import User
 
 from .serializers import UserSerializer
 from projects.permissions import IsProjectAdmin
@@ -38,16 +36,26 @@ class UserCreation(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED, headers=headers)
+        
+        # user pode vir como (user,) se o serializer retornar tupla
+        if isinstance(user, tuple):
+            user = user[0]
+        
+        return Response(
+            UserSerializer(user).data,
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
 
     def perform_create(self, serializer):
         user = serializer.save(self.request)
         return user
 
 
-
-class UserDetail(RetrieveDestroyAPIView):
+# UNIFICANDO retrieve, update e destroy
+class UserRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated & IsAdminUser]
-    lookup_field = 'id'
+    lookup_field = 'id'  # Se quiser /users/<int:id>/
+    # (Se preferir /users/<int:pk>/, troque para lookup_field='pk')
