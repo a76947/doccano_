@@ -50,14 +50,16 @@
 
     <!-- DIÁLOGO DE EDIÇÃO (controlado pelo pai) -->
     <v-dialog v-model="dialogEdit" max-width="600px">
-      <v-card v-if="selectedUser">
-        <UserEditForm
-          :user="selectedUser"
-          @saved="onUserSaved"
-          @cancel="onEditCancel"
-        />
-      </v-card>
-    </v-dialog>
+  <v-card v-if="selectedUser">
+    <UserEditForm
+      :key="selectedUser.id"  
+      :user="selectedUser"
+      @saved="onUserSaved"
+      @cancel="onEditCancel"
+    />
+  </v-card>
+</v-dialog>
+
   </v-card>
 </template>
 
@@ -144,10 +146,18 @@ export default Vue.extend({
     },
 
     onUserSaved() {
-      // Fechamos o diálogo e recarregamos a lista
-      this.dialogEdit = false
-      this.$fetch()
-    },
+  // Fecha o diálogo
+  this.dialogEdit = false
+  // Atualiza a lista de users
+  this.$fetch()
+
+  // *Se* o user que foi editado é exatamente o user logado,
+  // então faz um refresh no "me"
+  if (this.selectedUser && this.selectedUser.username === this.$store.state.auth.user?.username) {
+    this.$store.dispatch('auth/fetchUserProfile')
+  }
+}
+,
 
     onEditCancel() {
       // Se o usuário clicou em Cancelar no formulário
