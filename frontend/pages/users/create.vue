@@ -15,64 +15,63 @@
       </transition>
 
       <v-card-text>
-        <v-form v-model="valid">
-          <v-alert v-show="showError" v-model="showError" type="error" dismissible>
-            {{ errorMessage }}
-          </v-alert>
-          <v-text-field
-            v-model="userData.username"
-            :rules="userNameRules('Username is required')"
-            label="Username"
-            name="username"
-            :prepend-icon="mdiAccount"
-            type="text"
-            autofocus
-            dense
-          />
-          <v-text-field
-            v-model="userData.email"
-            :rules="emailRules"
-            label="Email"
-            name="email"
-            :prepend-icon="mdiEmail"
-            type="email"
-            dense
-          />
-          <v-text-field
-            v-model="userData.password1"
-            :rules="passwordRules('Password is required')"
-            label="Password"
-            name="password1"
-            :prepend-icon="mdiLock"
-            type="password"
-            dense
-          />
-          <v-text-field
-            v-model="userData.password2"
-            :rules="[...passwordRules('Confirm password is required'), passwordMatchRule]"
-            label="Confirm Password"
-            name="password2"
-            :prepend-icon="mdiLock"
-            type="password"
-            dense
-          />
-          <v-text-field
-            v-model="userData.location"
-            label="Location"
-            name="location"
-            :prepend-icon="mdiMapMarker"
-            dense
-          />
-        </v-form>
-        <v-text-field
-            v-model="userData.phoneNumber"
-            label="PhoneNumber"
-            name="PhoneNumber"
-            :prepend-icon="mdiPhone"
-            dense
-          />
-        </v-form>
-      </v-card-text>
+  <v-form v-model="valid">
+    <v-alert v-show="showError" v-model="showError" type="error" dismissible>
+      {{ errorMessage }}
+    </v-alert>
+    <v-text-field
+      v-model="userData.username"
+      :rules="userNameRules('Username is required')"
+      label="Username"
+      name="username"
+      :prepend-icon="mdiAccount"
+      type="text"
+      autofocus
+      dense
+    />
+    <v-text-field
+      v-model="userData.first_name"
+      label="First Name" 
+      name="first_name"
+      :prepend-icon="mdiAccount"
+      dense
+    />
+    <v-text-field
+      v-model="userData.last_name"
+      label="Last Name"
+      name="last_name" 
+      :prepend-icon="mdiAccount"
+      dense
+    />
+    <v-text-field
+      v-model="userData.email"
+      :rules="emailRules"
+      label="Email"
+      name="email"
+      :prepend-icon="mdiEmail"
+      type="email"
+      dense
+    />
+    <v-text-field
+      v-model="userData.password1"
+      :rules="passwordRules('Password is required')"
+      label="Password"
+      name="password1"
+      :prepend-icon="mdiLock"
+      type="password"
+      dense
+    />
+    <v-text-field
+      v-model="userData.password2"
+      :rules="[...passwordRules('Confirm password is required'), passwordMatchRule]"
+      label="Confirm Password"
+      name="password2"
+      :prepend-icon="mdiLock"
+      type="password"
+      dense
+    />
+  </v-form>
+</v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn
@@ -98,7 +97,7 @@
 
 <script lang="ts">
 import Vue from 'vue'
-import { mdiAccount, mdiLock, mdiEmail, mdiCheckCircle, mdiMapMarker, mdiPhone } from '@mdi/js'
+import { mdiAccount, mdiLock, mdiEmail, mdiCheckCircle, mdiMapMarker } from '@mdi/js'
 import { userNameRules, passwordRules } from '@/rules/index'
 import { APIAuthRepository } from '@/repositories/auth/apiAuthRepository'
 
@@ -113,11 +112,11 @@ export default Vue.extend({
       errorMessage: '',
       userData: {
         username: '',
+        first_name: '',
+        last_name: '',
         email: '',
         password1: '',
         password2: '',
-        location: '',
-        phoneNumber: '',
       },
       userNameRules,
       passwordRules,
@@ -126,7 +125,6 @@ export default Vue.extend({
       mdiEmail,
       mdiCheckCircle,
       mdiMapMarker,
-      mdiPhone,
       emailRules: [
         (v: string) => !!v || 'Email is required',
         (v: string) => /.+@.+\..+/.test(v) || 'Email must be valid'

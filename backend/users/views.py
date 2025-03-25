@@ -1,4 +1,4 @@
-from dj_rest_auth.registration.serializers import RegisterSerializer
+from .serializers import CustomRegisterSerializer
 from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, status
@@ -30,7 +30,7 @@ class Users(generics.ListAPIView):
 
 
 class UserCreation(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
+    serializer_class = CustomRegisterSerializer
     permission_classes = [IsAuthenticated & IsAdminUser]
 
     def create(self, request, *args, **kwargs):
