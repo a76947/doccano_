@@ -36,8 +36,25 @@ class UserCreation(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED, headers=headers)
+        
+        # user talvez seja (user, ) se o serializer.save(self.request) retornar uma tupla.
+        # Nesse caso, faça: user = user[0]
+        if isinstance(user, tuple):
+            user = user[0]
+        
+        return Response(
+            UserSerializer(user).data,
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
 
     def perform_create(self, serializer):
         user = serializer.save(self.request)
         return user
+
+
+# NOVA CLASSE p/ ver/editar um usuário específico
+class UserRetrieveUpdate(generics.RetrieveUpdateAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated & IsAdminUser]

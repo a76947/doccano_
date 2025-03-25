@@ -1,12 +1,23 @@
 <template>
   <v-card>
     <v-card-title v-if="isStaff">
-      <v-btn class="text-capitalize" color="primary" @click.stop="$router.push('/users/create')">
+      <v-btn
+        class="text-capitalize"
+        color="primary"
+        @click.stop="$router.push('/users/create')"
+      >
         {{ $t('generic.create') }}
       </v-btn>
-      <v-btn class="text-capitalize ms-2" color="primary" :disabled="!canEdit" @click.stop="edit">
+
+      <v-btn
+        class="text-capitalize ms-2"
+        color="primary"
+        :disabled="!canEdit"
+        @click.stop="dialogEdit = true"
+      >
         Edit
       </v-btn>
+
       <v-btn
         class="text-capitalize ms-2"
         :disabled="!canDelete"
@@ -15,11 +26,18 @@
       >
         {{ $t('generic.delete') }}
       </v-btn>
+
+      <!-- Diálogo de remover (exemplo seu) -->
       <v-dialog v-model="dialogDelete">
-        <form-delete :selected="selected" @cancel="dialogDelete = false" @remove="remove" />
+        <form-delete
+          :selected="selected"
+          @cancel="dialogDelete = false"
+          @remove="remove"
+        />
       </v-dialog>
     </v-card-title>
 
+    <!-- LISTA DE USUÁRIOS -->
     <users-list
       v-if="!isLoading && users.items.length > 0"
       v-model="selected"
@@ -29,6 +47,17 @@
       @update:query="updateQuery"
       @input="onSelectionChange"
     />
+
+    <!-- DIÁLOGO DE EDIÇÃO (controlado pelo pai) -->
+    <v-dialog v-model="dialogEdit" max-width="600px">
+      <v-card v-if="selectedUser">
+        <UserEditForm
+          :user="selectedUser"
+          @saved="onUserSaved"
+          @cancel="onEditCancel"
+        />
+      </v-card>
+    </v-dialog>
   </v-card>
 </template>
 
@@ -38,6 +67,8 @@ import { mapGetters } from 'vuex'
 import Vue from 'vue'
 import FormDelete from '~/components/project/FormDelete.vue'
 import UsersList from '~/components/users/UsersList.vue'
+import UserEditForm from '~/components/users/UserEditForm.vue'
+
 import { UserItem } from '~/domain/models/user/user'
 import { UserPage } from '~/domain/models/page'
 import { SearchQueryData } from '~/services/application/user/userAplicationService'
@@ -45,15 +76,16 @@ import { SearchQueryData } from '~/services/application/user/userAplicationServi
 export default Vue.extend({
   components: {
     FormDelete,
-    UsersList
+    UsersList,
+    UserEditForm
   },
-  layout: 'projects', // verificar se temos algum erro por usar este layout
-
+  layout: 'projects', // se for preciso
   middleware: ['check-auth', 'auth'],
 
   data() {
     return {
       dialogDelete: false,
+      dialogEdit: false, // controla o modal de edição
       users: {} as UserPage<UserItem>,
       selected: [] as UserItem[],
       isLoading: false
@@ -63,6 +95,7 @@ export default Vue.extend({
   async fetch() {
     this.isLoading = true
     try {
+      // Ajuste para chamar seu service de listagem
       this.users = await this.$services.user.list(
         this.$route.query as unknown as SearchQueryData
       )
@@ -80,6 +113,9 @@ export default Vue.extend({
     },
     canEdit(): boolean {
       return this.selected.length === 1
+    },
+    selectedUser(): UserItem | null {
+      return this.selected.length === 1 ? this.selected[0] : null
     }
   },
 
@@ -105,12 +141,17 @@ export default Vue.extend({
       // TODO: Implementar a remoção
       this.dialogDelete = false
       this.selected = []
-      
     },
 
-    edit() {
-      console.log('Editando:', this.selected)
-      // TODO: Implementar a edição
+    onUserSaved() {
+      // Fechamos o diálogo e recarregamos a lista
+      this.dialogEdit = false
+      this.$fetch()
+    },
+
+    onEditCancel() {
+      // Se o usuário clicou em Cancelar no formulário
+      this.dialogEdit = false
     }
   }
 })
