@@ -1,5 +1,4 @@
 <template>
-      <v-card-text>
   <v-card>
     <v-card-title>
       <span class="text-h5">Editar Usuário</span>

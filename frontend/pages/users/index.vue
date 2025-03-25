@@ -27,7 +27,7 @@
         {{ $t('generic.delete') }}
       </v-btn>
 
-      <!-- Diálogo de remover (exemplo seu) -->
+      <!-- Diálogo de remover -->
       <v-dialog v-model="dialogDelete">
         <form-delete
           :selected="selected"
@@ -48,18 +48,17 @@
       @input="onSelectionChange"
     />
 
-    <!-- DIÁLOGO DE EDIÇÃO (controlado pelo pai) -->
+    <!-- DIÁLOGO DE EDIÇÃO -->
     <v-dialog v-model="dialogEdit" max-width="600px">
-  <v-card v-if="selectedUser">
-    <UserEditForm
-      :key="selectedUser.id"  
-      :user="selectedUser"
-      @saved="onUserSaved"
-      @cancel="onEditCancel"
-    />
-  </v-card>
-</v-dialog>
-
+      <v-card v-if="selectedUser">
+        <UserEditForm
+          :key="selectedUser.id"
+          :user="selectedUser"
+          @saved="onUserSaved"
+          @cancel="onEditCancel"
+        />
+      </v-card>
+    </v-dialog>
   </v-card>
 </template>
 
@@ -70,7 +69,6 @@ import Vue from 'vue'
 import FormDelete from '~/components/project/FormDelete.vue'
 import UsersList from '~/components/users/UsersList.vue'
 import UserEditForm from '~/components/users/UserEditForm.vue'
-
 import { UserItem } from '~/domain/models/user/user'
 import { UserPage } from '~/domain/models/page'
 import { SearchQueryData } from '~/services/application/user/userAplicationService'
@@ -81,13 +79,13 @@ export default Vue.extend({
     UsersList,
     UserEditForm
   },
-  layout: 'projects', // se for preciso
+  layout: 'projects', 
   middleware: ['check-auth', 'auth'],
 
   data() {
     return {
       dialogDelete: false,
-      dialogEdit: false, // controla o modal de edição
+      dialogEdit: false,
       users: {} as UserPage<UserItem>,
       selected: [] as UserItem[],
       isLoading: false
@@ -97,7 +95,6 @@ export default Vue.extend({
   async fetch() {
     this.isLoading = true
     try {
-      // Ajuste para chamar seu service de listagem
       this.users = await this.$services.user.list(
         this.$route.query as unknown as SearchQueryData
       )
@@ -109,7 +106,12 @@ export default Vue.extend({
   },
 
   computed: {
-    ...mapGetters('auth', ['isStaff']),
+    // Mapeamos os getters do auth.js
+    ...mapGetters({
+      isStaff: 'auth/isStaff',
+      getUserId: 'auth/getUserId'
+    }),
+
     canDelete(): boolean {
       return this.selected.length > 0
     },
@@ -140,27 +142,26 @@ export default Vue.extend({
 
     remove() {
       console.log('Removendo:', this.selected)
-      // TODO: Implementar a remoção
+      // TODO: Implementar remoção
       this.dialogDelete = false
       this.selected = []
     },
 
     onUserSaved() {
-  // Fecha o diálogo
-  this.dialogEdit = false
-  // Atualiza a lista de users
-  this.$fetch()
+      // Fecha modal
+      this.dialogEdit = false
+      // Recarrega a lista
+      this.$fetch()
 
-  // *Se* o user que foi editado é exatamente o user logado,
-  // então faz um refresh no "me"
-  if (this.selectedUser && this.selectedUser.username === this.$store.state.auth.user?.username) {
-    this.$store.dispatch('auth/fetchUserProfile')
-  }
-}
-,
+      // Verifica se o user editado é o user logado
+      // (Comparando selectedUser?.id com getUserId)
+      if (this.selectedUser && this.selectedUser.id === this.getUserId) {
+        console.log('Editaste o teu próprio perfil -> logout automático...')
+        this.$store.dispatch('auth/logout')
+      }
+    },
 
     onEditCancel() {
-      // Se o usuário clicou em Cancelar no formulário
       this.dialogEdit = false
     }
   }
