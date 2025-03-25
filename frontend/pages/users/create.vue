@@ -79,7 +79,7 @@
           class="text-capitalize mr-3"
           outlined
           color="error"
-          @click="goBack"
+          @click= "goBack"
         >
           {{ $t('generic.cancel') || 'Cancel' }}
         </v-btn>
@@ -175,7 +175,7 @@ export default Vue.extend({
       }
     },
     goBack() {
-      this.$router.push('/')
+      this.$router.push('/users')
     }
   }
 })
