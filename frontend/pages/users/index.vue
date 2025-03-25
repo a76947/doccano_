@@ -9,14 +9,16 @@
         >
           {{ $t('generic.create') }}
         </v-btn>
+
         <v-btn
           class="text-capitalize ms-2"
           color="primary"
           :disabled="!canEdit"
-          @click.stop="edit"
+          @click.stop="dialogEdit = true"
         >
           Edit
         </v-btn>
+
         <v-btn
           class="text-capitalize ms-2"
           :disabled="!canDelete"
@@ -25,12 +27,12 @@
         >
           {{ $t('generic.delete') }}
         </v-btn>
+
         <v-dialog v-model="dialogDelete" width="400">
           <form-delete :selected="selected" @cancel="dialogDelete = false" @remove="remove" />
         </v-dialog>
       </v-card-title>
 
-      <!-- ✅ Mensagem de sucesso com transição fade -->
       <transition name="fade">
         <div v-if="showSnackbar" class="success-message">
           <v-icon small class="mr-2" color="success">mdi-check-circle</v-icon>
@@ -47,6 +49,16 @@
         @update:query="updateQuery"
         @input="onSelectionChange"
       />
+
+      <v-dialog v-model="dialogEdit" max-width="600px">
+        <v-card v-if="selectedUser">
+          <user-edit-form
+            :user="selectedUser"
+            @saved="onUserSaved"
+            @cancel="onEditCancel"
+          />
+        </v-card>
+      </v-dialog>
     </v-card>
   </div>
 </template>
@@ -57,6 +69,7 @@ import { mapGetters } from 'vuex'
 import Vue from 'vue'
 import FormDelete from '~/components/users/FormDelete.vue'
 import UsersList from '~/components/users/UsersList.vue'
+import UserEditForm from '~/components/users/UserEditForm.vue'
 import { UserItem } from '~/domain/models/user/user'
 import { UserPage } from '~/domain/models/page'
 import { SearchQueryData } from '~/services/application/user/userAplicationService'
@@ -64,7 +77,8 @@ import { SearchQueryData } from '~/services/application/user/userAplicationServi
 export default Vue.extend({
   components: {
     FormDelete,
-    UsersList
+    UsersList,
+    UserEditForm
   },
   layout: 'projects',
 
@@ -73,6 +87,7 @@ export default Vue.extend({
   data() {
     return {
       dialogDelete: false,
+      dialogEdit: false,
       users: {} as UserPage<UserItem>,
       selected: [] as UserItem[],
       isLoading: false,
@@ -101,6 +116,9 @@ export default Vue.extend({
     },
     canEdit(): boolean {
       return this.selected.length === 1
+    },
+    selectedUser(): UserItem | null {
+      return this.selected.length === 1 ? this.selected[0] : null
     }
   },
 
@@ -150,8 +168,20 @@ export default Vue.extend({
       }
     },
 
-    edit() {
-      console.log('Editando:', this.selected)
+    onUserSaved() {
+      this.successMessage = 'User updated successfully'
+      this.showSnackbar = true
+      
+      setTimeout(() => {
+        this.showSnackbar = false
+      }, 3000)
+      
+      this.dialogEdit = false
+      this.$fetch()
+    },
+
+    onEditCancel() {
+      this.dialogEdit = false
     }
   }
 })
