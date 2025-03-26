@@ -1,75 +1,66 @@
 <template>
-  <!-- Um único root element -->
-  <v-card>
-    <!-- Título e botões se for staff -->
-    <v-card-title v-if="isStaff">
-      <v-btn
-        class="text-capitalize"
-        color="primary"
-        @click.stop="$router.push('/users/create')"
-      >
-        {{ $t('generic.create') }}
-      </v-btn>
+  <div>
+    <v-card>
+      <v-card-title v-if="isStaff">
+        <v-btn
+          class="text-capitalize"
+          color="primary"
+          @click.stop="$router.push('users/create')"
+        >
+          {{ $t('generic.create') }}
+        </v-btn>
 
-      <v-btn
-        class="text-capitalize ms-2"
-        color="primary"
-        :disabled="!canEdit"
-        @click.stop="dialogEdit = true"
-      >
-        Edit
-      </v-btn>
+        <v-btn
+          class="text-capitalize ms-2"
+          color="primary"
+          :disabled="!canEdit"
+          @click.stop="dialogEdit = true"
+        >
+          Edit
+        </v-btn>
 
-      <v-btn
-        class="text-capitalize ms-2"
-        :disabled="!canDelete"
-        outlined
-        @click.stop="dialogDelete = true"
-      >
-        {{ $t('generic.delete') }}
-      </v-btn>
+        <v-btn
+          class="text-capitalize ms-2"
+          :disabled="!canDelete"
+          outlined
+          @click.stop="dialogDelete = true"
+        >
+          {{ $t('generic.delete') }}
+        </v-btn>
 
-      <!-- Diálogo de remoção -->
-      <v-dialog v-model="dialogDelete" width="400">
-        <form-delete
-          :selected="selected"
-          @cancel="dialogDelete = false"
-          @remove="remove"
-        />
+        <v-dialog v-model="dialogDelete" width="400">
+          <form-delete :selected="selected" @cancel="dialogDelete = false" @remove="remove" />
+        </v-dialog>
+      </v-card-title>
+
+      <transition name="fade">
+        <div v-if="showSnackbar" class="success-message">
+          <v-icon small class="mr-2" color="success">mdi-check-circle</v-icon>
+          {{ successMessage }}
+        </div>
+      </transition>
+
+      <users-list
+        v-if="!isLoading && users.items.length > 0"
+        v-model="selected"
+        :items="users.items"
+        :is-loading="isLoading"
+        :total="users.items.length"
+        @update:query="updateQuery"
+        @input="onSelectionChange"
+      />
+
+      <v-dialog v-model="dialogEdit" max-width="600px">
+        <v-card v-if="selectedUser">
+          <user-edit-form
+            :user="selectedUser"
+            @saved="onUserSaved"
+            @cancel="onEditCancel"
+          />
+        </v-card>
       </v-dialog>
-    </v-card-title>
-
-    <!-- Mensagem de sucesso (snackbar) com transição fade -->
-    <transition name="fade">
-      <div v-if="showSnackbar" class="success-message">
-        <v-icon small class="mr-2" color="success">mdi-check-circle</v-icon>
-        {{ successMessage }}
-      </div>
-    </transition>
-
-    <!-- LISTA DE USUÁRIOS -->
-    <users-list
-      v-if="!isLoading && users.items.length > 0"
-      v-model="selected"
-      :items="users.items"
-      :is-loading="isLoading"
-      :total="users.items.length"
-      @update:query="updateQuery"
-      @input="onSelectionChange"
-    />
-
-    <!-- DIÁLOGO DE EDIÇÃO -->
-    <v-dialog v-model="dialogEdit" max-width="600px">
-      <v-card v-if="selectedUser">
-        <UserEditForm
-          :key="selectedUser.id"
-          :user="selectedUser"
-          @saved="onUserSaved"
-          @cancel="onEditCancel"
-        />
-      </v-card>
-    </v-dialog>
-  </v-card>
+    </v-card>
+  </div>
 </template>
 
 <script lang="ts">
@@ -80,7 +71,6 @@ import Vue from 'vue'
 import FormDelete from '~/components/users/FormDelete.vue'
 import UsersList from '~/components/users/UsersList.vue'
 import UserEditForm from '~/components/users/UserEditForm.vue'
-
 import { UserItem } from '~/domain/models/user/user'
 import { UserPage } from '~/domain/models/page'
 import { SearchQueryData } from '~/services/application/user/userAplicationService'
@@ -99,8 +89,6 @@ export default Vue.extend({
       // Dialogs
       dialogDelete: false,
       dialogEdit: false,
-
-      // Lista de usuários e seleção
       users: {} as UserPage<UserItem>,
       selected: [] as UserItem[],
       isLoading: false,
@@ -189,18 +177,16 @@ export default Vue.extend({
       }
     },
 
-    // Método que é chamado quando UserEditForm emite "saved"
     onUserSaved() {
-      // Fecha modal
+      this.successMessage = 'User updated successfully'
+      this.showSnackbar = true
+      
+      setTimeout(() => {
+        this.showSnackbar = false
+      }, 3000)
+      
       this.dialogEdit = false
-      // Recarrega a lista
       this.$fetch()
-
-      // Se for o user logado que foi editado, forçamos logout (opcional)
-      if (this.selectedUser && this.selectedUser.id === this.getUserId) {
-        console.log('Editaste o teu próprio perfil -> logout automático...')
-        this.$store.dispatch('auth/logout')
-      }
     },
 
     onEditCancel() {
