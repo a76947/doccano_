@@ -165,7 +165,7 @@ export default Vue.extend({
               })
               .join('; ')
           } else {
-            this.errorMessage = 'Failed to create user'
+            this.errorMessage = 'Failed to connect to the database, try again later'
           }
         } else {
           this.errorMessage = error.message || 'Failed to create user'
