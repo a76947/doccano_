@@ -153,6 +153,7 @@ export default {
      ** You can extend webpack config here
      */
     publicPath: process.env.PUBLIC_PATH || '/_nuxt/',
+    transpile: ['@flatten-js/core'],
     extend(config, _) {
       // config.module.rules.push({
       //   test: /\.(txt|csv|conll|jsonl)$/i,
