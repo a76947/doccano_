@@ -14,6 +14,7 @@ from .models import (
     Speech2textProject,
     Tag,
     TextClassificationProject,
+    Perspective,
 )
 
 
@@ -146,3 +147,12 @@ class ProjectPolymorphicSerializer(PolymorphicSerializer):
         Project: ProjectSerializer,
         **{cls.Meta.model: cls for cls in ProjectSerializer.__subclasses__()},
     }
+
+class PerspectiveSerializer(serializers.ModelSerializer):
+    options = serializers.ListField(
+        child=serializers.CharField(), required=False, allow_empty=True
+    )
+
+    class Meta:
+        model = Perspective
+        fields = ['id', 'name', 'data_type', 'options']  # Adiciona options aqui
