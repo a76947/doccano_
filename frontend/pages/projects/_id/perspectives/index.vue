@@ -64,6 +64,7 @@
       show-select
       :items-per-page="5"
       class="elevation-1"
+      @click:row="showDetails"
     >
       <!-- Aqui está a barra de pesquisa -->
       <template #top>
@@ -82,6 +83,45 @@
 </template>
 
     </v-data-table>
+
+    <!-- Details Dialog -->
+    <v-dialog v-model="dialogDetails" max-width="500px">
+      <v-card v-if="selectedPerspective">
+        <v-card-title class="headline">Perspective Details</v-card-title>
+        <v-card-text>
+          <v-list-item>
+            <v-list-item-content>
+              <v-list-item-title>Name:</v-list-item-title>
+              <v-list-item-subtitle>{{ selectedPerspective.name }}</v-list-item-subtitle>
+            </v-list-item-content>
+          </v-list-item>
+          
+          <v-list-item>
+            <v-list-item-content>
+              <v-list-item-title>Data Type:</v-list-item-title>
+              <v-list-item-subtitle>{{ selectedPerspective.data_type }}</v-list-item-subtitle>
+            </v-list-item-content>
+          </v-list-item>
+          
+          <v-list-item v-if="selectedPerspective.data_type === 'string' 
+          && selectedPerspective.options 
+          && selectedPerspective.options.length">
+            <v-list-item-content>
+              <v-list-item-title>Options:</v-list-item-title>
+              <v-chip-group column>
+                <v-chip v-for="(option, i) in selectedPerspective.options" :key="i" small>
+                  {{ option }}
+                </v-chip>
+              </v-chip-group>
+            </v-list-item-content>
+          </v-list-item>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary" text @click="dialogDetails = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-card>
 </template>
 
@@ -107,6 +147,8 @@ export default {
       errorMessage: '',
       search: '',
       selected: [],
+      dialogDetails: false,
+      selectedPerspective: null,
 
       editedItem: {
       name: '',
@@ -183,6 +225,11 @@ export default {
       this.dialogCreate = false
       this.errorMessage = ''
       this.editedItem = Object.assign({}, this.defaultItem)
+    },
+
+    showDetails(item) {
+      this.selectedPerspective = item;
+      this.dialogDetails = true;
     }
   }
 }
