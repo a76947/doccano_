@@ -20,7 +20,6 @@
               label="Tipo de Dado"
               required
             />
-
             <v-combobox
               v-if="editedItem.data_type === 'string'"
               v-model="editedItem.options"
@@ -29,9 +28,7 @@
               chips
               deletable-chips
               clearable
-              />
-
-
+            />
             <v-alert v-if="errorMessage" type="error" dense>{{ errorMessage }}</v-alert>
           </v-card-text>
           <v-card-actions>
@@ -43,7 +40,7 @@
       </v-dialog>
     </v-card-title>
 
-    <!-- Snackbar de sucesso -->
+    <!-- Snackbars -->
     <v-snackbar v-model="snackbar" timeout="3000" top color="success">
       {{ snackbarMessage }}
       <template #action="{ attrs }">
@@ -51,7 +48,6 @@
       </template>
     </v-snackbar>
 
-    <!-- Snackbar de erro -->
     <v-snackbar v-model="snackbarError" timeout="3000" top color="error">
       {{ snackbarErrorMessage }}
       <template #action="{ attrs }">
@@ -59,23 +55,37 @@
       </template>
     </v-snackbar>
 
-    <!-- Tabela de Perspetivas -->
+    <!-- Tabela com barra de pesquisa -->
     <v-data-table
+      v-model="selected"
       :headers="headers"
       :items="perspectives"
+      :search="search"
+      show-select
       :items-per-page="5"
       class="elevation-1"
-      hide-default-header
     >
-      <template #item="{ item }">
-        <tr>
-          <td>{{ item.name }}</td>
-          <td class="text-uppercase">{{ item.data_type }}</td>
-        </tr>
-      </template>
+      <!-- Aqui está a barra de pesquisa -->
+      <template #top>
+  <v-toolbar flat color="grey lighten-4">
+    <v-text-field
+      v-model="search"
+      prepend-inner-icon="mdi-magnify"
+      placeholder="Search"
+      single-line
+      hide-details
+      class="mx-4"
+      dense
+      background-color="transparent"
+    />
+  </v-toolbar>
+</template>
+
     </v-data-table>
   </v-card>
 </template>
+
+
 <script>
 import { usePerspectiveApplicationService } from '@/services/application/perspective/perspectiveApplicationService'
 
@@ -95,10 +105,13 @@ export default {
       snackbarError: false,
       snackbarErrorMessage: '',
       errorMessage: '',
+      search: '',
+      selected: [],
+
       editedItem: {
       name: '',
       data_type: 'string',
-      options: [] // agora é uma lista diretamente
+      options: [] 
       },
 
       defaultItem: {
@@ -136,36 +149,35 @@ export default {
     },
 
     async save() {
-      if (
-        !this.editedItem.name || 
-        !this.editedItem.data_type || 
-        (this.editedItem.data_type === 'string' && !this.editedItem.options)
-      ){
-      this.snackbarErrorMessage = 'Preenche todos os campos obrigatórios!'
-        this.snackbarError = true
-        return
-      }
+  if (
+    !this.editedItem.name || 
+    !this.editedItem.data_type || 
+    (this.editedItem.data_type === 'string' && this.editedItem.options.length === 0)
+  ){
+    this.snackbarErrorMessage = 'Preenche todos os campos obrigatórios!'
+    this.snackbarError = true
+    return
+  }
 
-      const payload = { ...this.editedItem }
+  const payload = { ...this.editedItem }
 
-      if (payload.data_type === 'string') {
-        payload.options = payload.options.split(',').map(option => option.trim())
-      } else {
-        payload.options = []
-      }
+  if (payload.data_type !== 'string') {
+    payload.options = []
+  }
 
-      try {
-        const service = usePerspectiveApplicationService()
-        await service.createPerspective(this.projectId, payload)
-        this.snackbarMessage = 'Perspetiva criada com sucesso!'
-        this.snackbar = true
-        this.close()
-        this.fetchPerspectives()
-      } catch (e) {
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Erro ao criar perspetiva'
-        this.snackbarError = true
-      }
-    },
+  try {
+    const service = usePerspectiveApplicationService()
+    await service.createPerspective(this.projectId, payload)
+    this.snackbarMessage = 'Perspetiva criada com sucesso!'
+    this.snackbar = true
+    this.close()
+    this.fetchPerspectives()
+  } catch (e) {
+    this.snackbarErrorMessage = e.response?.data?.detail || 'Erro ao criar perspetiva'
+    this.snackbarError = true
+  }
+},
+
 
     close() {
       this.dialogCreate = false
