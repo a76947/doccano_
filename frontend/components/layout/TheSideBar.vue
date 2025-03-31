@@ -117,6 +117,14 @@ export default {
           link: 'metrics',
           isVisible: this.isProjectAdmin
         },
+
+        {
+          icon: mdiDatabase,
+          text: 'Perspetivas',
+          link: 'perspectives',
+          isVisible: this.isProjectAdmin
+        },
+
         {
           icon: mdiCog,
           text: this.$t('settings.title'),
