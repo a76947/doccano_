@@ -13,22 +13,35 @@
         <v-card>
           <v-card-title class="headline">Nova Perspetiva</v-card-title>
           <v-card-text>
-            <v-text-field v-model="editedItem.name" label="Nome" required />
-            <v-select
-              v-model="editedItem.data_type"
-              :items="['string', 'int', 'boolean']"
-              label="Tipo de Dado"
+            <v-text-field
+              v-model="editedItem.name"
+              label="Nome"
+              :error="showErrors && !editedItem.name"
+              :error-messages="showErrors && !editedItem.name ? ['* Campo obrigatório'] : []"
               required
             />
+            <v-select
+              v-model="editedItem.data_type"
+              :items="['string', 'int', 'boolean', 'opções']"
+              label="Tipo de Dado"
+              :error="showErrors && !editedItem.data_type"
+              :error-messages="showErrors && !editedItem.data_type ? ['* Campo obrigatório'] : []"
+              required
+            />
+
             <v-combobox
-              v-if="editedItem.data_type === 'string'"
+              v-if="editedItem.data_type === 'opções'"
               v-model="editedItem.options"
               label="Opções"
               multiple
               chips
               deletable-chips
               clearable
+              :error="showErrors && editedItem.options.length < 2"
+              :error-messages="showErrors && editedItem.options.length < 2 ? 
+                ['* Insira pelo menos duas opções'] : []"
             />
+
             <v-alert v-if="errorMessage" type="error" dense>{{ errorMessage }}</v-alert>
           </v-card-text>
           <v-card-actions>
@@ -40,7 +53,7 @@
       </v-dialog>
     </v-card-title>
 
-    <!-- Snackbars -->
+    <!-- Snackbar de sucesso -->
     <v-snackbar v-model="snackbar" timeout="3000" top color="success">
       {{ snackbarMessage }}
       <template #action="{ attrs }">
@@ -48,6 +61,7 @@
       </template>
     </v-snackbar>
 
+    <!-- Snackbar de erro -->
     <v-snackbar v-model="snackbarError" timeout="3000" top color="error">
       {{ snackbarErrorMessage }}
       <template #action="{ attrs }">
@@ -55,7 +69,7 @@
       </template>
     </v-snackbar>
 
-    <!-- Tabela com barra de pesquisa -->
+    <!-- Barra de pesquisa e tabela -->
     <v-data-table
       v-model="selected"
       :headers="headers"
@@ -65,26 +79,23 @@
       :items-per-page="5"
       class="elevation-1"
     >
-      <!-- Aqui está a barra de pesquisa -->
       <template #top>
-  <v-toolbar flat color="grey lighten-4">
-    <v-text-field
-      v-model="search"
-      prepend-inner-icon="mdi-magnify"
-      placeholder="Search"
-      single-line
-      hide-details
-      class="mx-4"
-      dense
-      background-color="transparent"
-    />
-  </v-toolbar>
-</template>
-
+        <v-toolbar flat color="grey lighten-4">
+          <v-text-field
+            v-model="search"
+            prepend-inner-icon="mdi-magnify"
+            placeholder="Search"
+            single-line
+            hide-details
+            class="mx-4"
+            dense
+            background-color="transparent"
+          />
+        </v-toolbar>
+      </template>
     </v-data-table>
   </v-card>
 </template>
-
 
 <script>
 import { usePerspectiveApplicationService } from '@/services/application/perspective/perspectiveApplicationService'
@@ -105,18 +116,19 @@ export default {
       snackbarError: false,
       snackbarErrorMessage: '',
       errorMessage: '',
+      showErrors: false,
       search: '',
       selected: [],
 
       editedItem: {
-      name: '',
-      data_type: 'string',
-      options: [] 
+        name: '',
+        data_type: 'opções',
+        options: [] 
       },
 
       defaultItem: {
         name: '',
-        data_type: 'string',
+        data_type: 'opções',
         options: ''
       },
       perspectives: [],
@@ -149,39 +161,52 @@ export default {
     },
 
     async save() {
-  if (
-    !this.editedItem.name || 
-    !this.editedItem.data_type || 
-    (this.editedItem.data_type === 'string' && this.editedItem.options.length === 0)
-  ){
-    this.snackbarErrorMessage = 'Preenche todos os campos obrigatórios!'
-    this.snackbarError = true
-    return
-  }
+      this.showErrors = true
 
-  const payload = { ...this.editedItem }
+      if (!this.editedItem.name || !this.editedItem.data_type) return
 
-  if (payload.data_type !== 'string') {
-    payload.options = []
-  }
+      if (
+        this.editedItem.data_type === 'opções' &&
+        (!this.editedItem.options || this.editedItem.options.length < 2)
+      ) return
 
-  try {
-    const service = usePerspectiveApplicationService()
-    await service.createPerspective(this.projectId, payload)
-    this.snackbarMessage = 'Perspetiva criada com sucesso!'
-    this.snackbar = true
-    this.close()
-    this.fetchPerspectives()
-  } catch (e) {
-    this.snackbarErrorMessage = e.response?.data?.detail || 'Erro ao criar perspetiva'
-    this.snackbarError = true
-  }
-},
+      const nomeExiste = this.perspectives.some(p => {
+        const nomeAtual = p.name.trim().toLowerCase()
+        const nomeNovo = this.editedItem.name.trim().toLowerCase()
+        return nomeAtual === nomeNovo
+      })
 
+      if (nomeExiste) {
+        this.snackbarErrorMessage = 'Já existe uma perspetiva com esse nome!'
+        this.snackbarError = true
+        return
+      }
+
+      const payload = { ...this.editedItem }
+
+      if (payload.data_type === 'boolean') {
+        payload.options = ['true', 'false']
+      } else if (payload.data_type !== 'opções') {
+        payload.options = []
+      }
+
+      try {
+        const service = usePerspectiveApplicationService()
+        await service.createPerspective(this.projectId, payload)
+        this.snackbarMessage = 'Perspetiva criada com sucesso!'
+        this.snackbar = true
+        this.close()
+        this.fetchPerspectives()
+      } catch (e) {
+        this.snackbarErrorMessage = e.response?.data?.detail || 'Erro ao criar perspetiva'
+        this.snackbarError = true
+      }
+    },
 
     close() {
       this.dialogCreate = false
       this.errorMessage = ''
+      this.showErrors = false
       this.editedItem = Object.assign({}, this.defaultItem)
     }
   }
@@ -193,4 +218,3 @@ export default {
   width: 500px;
 }
 </style>
-
