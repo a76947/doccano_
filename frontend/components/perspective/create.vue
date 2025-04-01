@@ -1,36 +1,67 @@
 <template>
-    <form @submit.prevent="handleSubmit">
-      <label>Nome da Perspetiva:</label>
-      <input v-model="form.name" required />
+  <form @submit.prevent="handleSubmit">
+    <label>Nome da Perspetiva:</label>
+    <input v-model="form.name" required />
+
+    <label>Tipo de Dado:</label>
+    <select v-model="form.data_type" required>
+      <option value="int">Inteiro</option>
+      <option value="string">Texto</option>
+      <option value="boolean">Booleano</option>
+    </select>
+
+    <button type="submit">Criar</button>
+  </form>
+</template>
+
+<script>
+export default {
+  data() {
+    return {
+      form: { 
+        name: '', 
+        data_type: 'string' 
+      }
+    }
+  },
   
-      <label>Tipo de Dado:</label>
-      <select v-model="form.data_type" required>
-        <option value="int">Inteiro</option>
-        <option value="string">Texto</option>
-        <option value="boolean">Booleano</option>
-      </select>
+  computed: {
+    projectId() {
+      return this.$route.params.id
+    }
+  },
   
-      <button type="submit">Criar</button>
-    </form>
-  </template>
-  
-  <script setup>
-  import { ref } from 'vue'
-  import { useRoute } from 'vue-router'
-  import { usePerspectiveApplicationService } from '@/services/application/perspective/perspectiveApplicationService'
-  
-  const route = useRoute()
-  const projectId = route.params.id
-  const form = ref({ name: '', data_type: 'string' })
-  
-  const perspectiveService = usePerspectiveApplicationService()
-  
-    const handleSubmit = async () => {
-    await perspectiveService.createPerspective(projectId, {
-    ...form.value,
-    project_id: projectId
-})
-    alert('Perspetiva criada com sucesso!')
+  methods: {
+    async handleSubmit() {
+      try {
+        await this.$services.perspective.createPerspective(this.projectId, {
+          ...this.form,
+          project_id: this.projectId
+        })
+        
+        this.$emit('created')
+        this.form = { name: '', data_type: 'string' }
+        alert('Perspetiva criada com sucesso!')
+      } catch (error) {
+        console.error('Error creating perspective:', error)
+        alert('Erro ao criar a perspetiva')
+      }
+    }
   }
-  </script>
-  
+}
+</script>
+
+<style scoped>
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+button {
+  margin-top: 10px;
+  padding: 8px;
+}
+</style>

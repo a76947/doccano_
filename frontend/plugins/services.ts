@@ -10,7 +10,11 @@ import { SegmentationApplicationService } from '@/services/application/tasks/seg
 import { SequenceLabelingApplicationService } from '@/services/application/tasks/sequenceLabeling/sequenceLabelingApplicationService'
 import { UserApplicationService } from '~/services/application/user/userAplicationService'
 
+// Add these imports
+import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
+import { PerspectiveApplicationService } from '@/services/application/perspective/perspectiveApplicationService'
 
+// Update with perspective property
 export interface Services {
   categoryType: LabelApplicationService
   spanType: LabelApplicationService
@@ -23,6 +27,7 @@ export interface Services {
   tag: TagApplicationService
   bbox: BoundingBoxApplicationService
   segmentation: SegmentationApplicationService
+  perspective: PerspectiveApplicationService // Add this line
 }
 
 declare module 'vue/types/vue' {
@@ -30,6 +35,9 @@ declare module 'vue/types/vue' {
     readonly $services: Services
   }
 }
+
+// Add the perspective repository to repositories
+repositories.perspective = new ApiPerspectiveRepository()
 
 const plugin: Plugin = (_, inject) => {
   const services: Services = {
@@ -46,7 +54,8 @@ const plugin: Plugin = (_, inject) => {
     tag: new TagApplicationService(repositories.tag),
     bbox: new BoundingBoxApplicationService(repositories.boundingBox),
     segmentation: new SegmentationApplicationService(repositories.segmentation),
-    user: new UserApplicationService(repositories.user)
+    user: new UserApplicationService(repositories.user),
+    perspective: new PerspectiveApplicationService(repositories.perspective) // Add this line
   }
   inject('services', services)
 }

@@ -16,6 +16,7 @@ from .models import (
     TextClassificationProject,
     Perspective,
     PerspectiveAnswer,
+    PerspectiveGroup,
 )
 
 
@@ -156,10 +157,19 @@ class PerspectiveSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Perspective
-        fields = ['id', 'question', 'data_type', 'options'] 
+        fields = ['id', 'name', 'question', 'data_type', 'options', 'group', 'project']
+        read_only_fields = ['id']
         
 class PerspectiveAnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = PerspectiveAnswer
         fields = ['id', 'perspective', 'project', 'created_by', 'answer']
         read_only_fields = ['id', 'created_by']
+
+class PerspectiveGroupSerializer(serializers.ModelSerializer):
+    questions = PerspectiveSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = PerspectiveGroup
+        fields = ['id', 'name', 'description', 'questions', 'created_at']
+        read_only_fields = ['id', 'created_at']

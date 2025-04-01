@@ -1,15 +1,23 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views.perspective import PerspectiveViewSet
+from .views.perspective import PerspectiveViewSet, PerspectiveGroupViewSet, PerspectiveAnswerViewSet
 from .views.project import ProjectList, ProjectDetail, CloneProject
 from .views.tag import TagList, TagDetail
 from .views.member import MemberList, MemberDetail, MyRole
-from projects.views.perspective import PerspectiveAnswerViewSet
 
+# Create router for ViewSets
 router = DefaultRouter()
+# These patterns will be prefixed by 'v1/' in the main urls.py, so DON'T include 'v1/' here
+router.register(r'projects/(?P<project_id>\d+)/perspectives', PerspectiveViewSet, basename='perspective')
+router.register(r'projects/(?P<project_id>\d+)/perspective-groups', PerspectiveGroupViewSet, basename='perspective-group')
+router.register(r'projects/(?P<project_id>\d+)/perspective-answers', PerspectiveAnswerViewSet, 'perspective-answer')
 
 urlpatterns = [
+    # Include router URLs directly (not under another path)
+    path('', include(router.urls)),
+    
+    # Other URL patterns
     path("projects", ProjectList.as_view(), name="project_list"),
     path("projects/<int:project_id>", ProjectDetail.as_view(), name="project_detail"),
     path("projects/<int:project_id>/my-role", MyRole.as_view(), name="my_role"),
@@ -18,23 +26,4 @@ urlpatterns = [
     path("projects/<int:project_id>/members", MemberList.as_view(), name="member_list"),
     path("projects/<int:project_id>/members/<int:member_id>", MemberDetail.as_view(), name="member_detail"),
     path("projects/<int:project_id>/clone", CloneProject.as_view(), name="clone_project"),
-
-    # Rota para PerspectiveViewSet
-    path(
-        "projects/<int:project_id>/perspectives/",
-        PerspectiveViewSet.as_view({
-            "get": "list",
-            "post": "create"
-        }),
-        name="perspective-list-create"
-    ),
-
-    path(
-        "projects/<int:project_id>/perspectivesanswers/",  # Corrige o nome do endpoint
-        PerspectiveAnswerViewSet.as_view({
-            "get": "list",
-            "post": "create"
-        }),
-        name="perspectiveanswer-list-create"
-    ),
 ]

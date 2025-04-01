@@ -239,7 +239,10 @@ class Perspective(models.Model):
     ]
 
     project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='perspectives')
-    group = models.ForeignKey('PerspectiveGroup', on_delete=models.CASCADE, related_name='questions')
+    group = models.ForeignKey('PerspectiveGroup', on_delete=models.CASCADE, 
+                             related_name='questions', null=True)
+    # The name field already exists in the database
+    name = models.CharField(max_length=100)
     question = models.CharField(max_length=100)
     data_type = models.CharField(max_length=20, choices=DATA_TYPES)
     options = models.JSONField(default=list, blank=True)  # List of options

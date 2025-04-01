@@ -1,15 +1,45 @@
-import axios from 'axios'
+import ApiService from '@/services/api.service'
 
-export function useApiPerspectiveRepository() {
-  const create = async (projectId: number, data: any) => {
-    // 🔁 ALTERAR perspective → perspectives
-    await axios.post(`/v1/projects/${projectId}/perspectives/`, data)
+export class ApiPerspectiveRepository {
+  async create(projectId: string | number, payload: any) {
+    const url = `/projects/${projectId}/perspectives/`
+    const response = await ApiService.post(url, payload)
+    return response.data
   }
 
-  const list = async (projectId: number) => {
-    const res = await axios.get(`/v1/projects/${projectId}/perspectives/`)
-    return res.data
+  async list(projectId: string | number) {
+    const url = `/projects/${projectId}/perspectives/`
+    const response = await ApiService.get(url)
+    return response.data
   }
 
-  return { create, list }
+  async createGroup(projectId: string | number, payload: any) {
+    const url = `/projects/${projectId}/perspective-groups/`
+    const response = await ApiService.post(url, payload)
+    return response.data
+  }
+
+  async listGroups(projectId: string | number) {
+    const url = `/projects/${projectId}/perspective-groups/`
+    const response = await ApiService.get(url)
+    return response.data
+  }
+
+  async createAnswer(projectId: string | number, payload: any) {
+    const url = `/projects/${projectId}/perspective-answers/`
+    const response = await ApiService.post(url, payload)
+    return response.data
+  }
+
+  async listAnswers(projectId: string | number) {
+    const url = `/projects/${projectId}/perspective-answers/`
+    const response = await ApiService.get(url)
+    return response.data
+  }
+
+  async delete(projectId: string | number, questionId: string | number) {
+    const url = `/projects/${projectId}/perspectives/${questionId}/`
+    const response = await ApiService.delete(url)
+    return response.data
+  }
 }
