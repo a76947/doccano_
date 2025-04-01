@@ -1,9 +1,22 @@
 <template>
   <v-card>
     <v-card-title>
-      <v-btn class="text-capitalize" color="primary" @click.stop="dialogCreateGroup = true">
+      <v-btn 
+        class="text-capitalize" 
+        color="primary" 
+        @click.stop="openCreateGroupDialog()"
+        v-if="!hasGroups"
+      >
         Create Perspective Group
       </v-btn>
+      <v-alert
+        v-else
+        type="info"
+        dense
+        class="mb-0"
+      >
+        Only one perspective group is allowed per project
+      </v-alert>
     </v-card-title>
 
     <!-- Group Creation Dialog -->
@@ -560,7 +573,16 @@ export default {
         this.snackbarErrorMessage = e.response?.data?.detail || 'Error deleting question'
         this.snackbarError = true
       }
-    }
+    },
+
+    openCreateGroupDialog() {
+      if (this.hasGroups) {
+        this.snackbarErrorMessage = 'Only one perspective group is allowed per project'
+        this.snackbarError = true
+        return
+      }
+      this.dialogCreateGroup = true
+    },
   }
 }
 </script>
