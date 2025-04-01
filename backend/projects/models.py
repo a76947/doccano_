@@ -228,9 +228,30 @@ class Perspective(models.Model):
     ]
 
     project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='perspectives')
-    name = models.CharField(max_length=100)
+    question = models.CharField(max_length=100)
     data_type = models.CharField(max_length=20, choices=DATA_TYPES)
     options = models.JSONField(default=list, blank=True)  # <- Adiciona este campo
 
     def __str__(self):
-        return f"{self.name} ({self.data_type})"
+        return f"{self.question} ({self.data_type})"
+    
+class PerspectiveAnswer(models.Model):
+    perspective = models.ForeignKey(
+        'Perspective', 
+        on_delete=models.CASCADE, 
+        related_name='answers'
+    )  # Relaciona com a tabela Perspective
+    project = models.ForeignKey(
+        'Project', 
+        on_delete=models.CASCADE, 
+        related_name='perspective_answers'
+    )  # Relaciona com a tabela Project
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    answer = models.TextField()  # Resposta fornecida pelo usuário
+
+    def __str__(self):
+        return f"Answer to {self.perspective.question_tag}: {self.answer}"

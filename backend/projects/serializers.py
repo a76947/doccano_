@@ -15,6 +15,7 @@ from .models import (
     Tag,
     TextClassificationProject,
     Perspective,
+    PerspectiveAnswer,
 )
 
 
@@ -155,4 +156,11 @@ class PerspectiveSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Perspective
-        fields = ['id', 'name', 'data_type', 'options']  # Adiciona options aqui
+        fields = ['id', 'question', 'data_type', 'options'] 
+        
+class PerspectiveAnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PerspectiveAnswer
+        fields = ['id', 'perspective', 'project', 'created_by', 'answer']
+        read_only_fields = ['id', 'user', 'answer']
+       
