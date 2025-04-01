@@ -37,9 +37,9 @@
               chips
               deletable-chips
               clearable
-              :error="showErrors && editedItem.options.length < 2"
-              :error-messages="showErrors && editedItem.options.length < 2 ? 
-                ['* Insira pelo menos duas opções'] : []"
+              :error="showErrors && editedItem.options.length === 0"
+              :error-messages="showErrors && editedItem.options.length === 0 ? 
+              ['* Campo obrigatório'] : []"
             />
 
             <v-alert v-if="errorMessage" type="error" dense>{{ errorMessage }}</v-alert>
@@ -80,18 +80,15 @@
       class="elevation-1"
     >
       <template #top>
-        <v-toolbar flat color="grey lighten-4">
-          <v-text-field
-            v-model="search"
-            prepend-inner-icon="mdi-magnify"
-            placeholder="Search"
-            single-line
-            hide-details
-            class="mx-4"
-            dense
-            background-color="transparent"
-          />
-        </v-toolbar>
+        <v-text-field
+          v-model="search"
+          prepend-inner-icon="mdi-magnify"
+          placeholder="Search "
+          single-line
+          hide-details
+          filled
+          class="pa-4"
+        />
       </template>
     </v-data-table>
   </v-card>
@@ -163,12 +160,16 @@ export default {
     async save() {
       this.showErrors = true
 
-      if (!this.editedItem.name || !this.editedItem.data_type) return
+      if (!this.editedItem.name || !this.editedItem.data_type) {
+        return
+      }
 
       if (
         this.editedItem.data_type === 'opções' &&
-        (!this.editedItem.options || this.editedItem.options.length < 2)
-      ) return
+        (!this.editedItem.options || this.editedItem.options.length === 0)
+      ) {
+        return
+      }
 
       const nomeExiste = this.perspectives.some(p => {
         const nomeAtual = p.name.trim().toLowerCase()
