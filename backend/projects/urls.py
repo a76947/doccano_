@@ -5,6 +5,7 @@ from .views.perspective import PerspectiveViewSet
 from .views.project import ProjectList, ProjectDetail, CloneProject
 from .views.tag import TagList, TagDetail
 from .views.member import MemberList, MemberDetail, MyRole
+from projects.views.perspective import PerspectiveAnswerViewSet
 
 router = DefaultRouter()
 
@@ -18,14 +19,22 @@ urlpatterns = [
     path("projects/<int:project_id>/members/<int:member_id>", MemberDetail.as_view(), name="member_detail"),
     path("projects/<int:project_id>/clone", CloneProject.as_view(), name="clone_project"),
 
-   # Não coloques o prefixo "v1" aqui!
-path(
-    "projects/<int:project_id>/perspectives/",
-    PerspectiveViewSet.as_view({
-        "get": "list",
-        "post": "create"
-    }),
-    name="perspective-list-create"
-),
+    # Rota para PerspectiveViewSet
+    path(
+        "projects/<int:project_id>/perspectives/",
+        PerspectiveViewSet.as_view({
+            "get": "list",
+            "post": "create"
+        }),
+        name="perspective-list-create"
+    ),
 
+    path(
+        "projects/<int:project_id>/perspectivesanswers/",  # Corrige o nome do endpoint
+        PerspectiveAnswerViewSet.as_view({
+            "get": "list",
+            "post": "create"
+        }),
+        name="perspectiveanswer-list-create"
+    ),
 ]
