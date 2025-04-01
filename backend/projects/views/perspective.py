@@ -16,7 +16,7 @@ class PerspectiveViewSet(viewsets.ModelViewSet):
         project_id = self.kwargs.get("project_id")
         project = get_object_or_404(Project, id=project_id)
 
-        # ⚠️ Se for boolean, define opções automaticamente
+        # Define opções automaticamente se o tipo for booleano
         if serializer.validated_data.get("data_type") == "boolean":
             serializer.validated_data["options"] = ["true", "false"]
 

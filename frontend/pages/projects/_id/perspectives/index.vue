@@ -14,10 +14,10 @@
           <v-card-title class="headline">Nova Perspetiva</v-card-title>
           <v-card-text>
             <v-text-field
-              v-model="editedItem.name"
-              label="Nome"
-              :error="showErrors && !editedItem.name"
-              :error-messages="showErrors && !editedItem.name ? ['* Campo obrigatório'] : []"
+              v-model="editedItem.question"
+              label="Questao"
+              :error="showErrors && !editedItem.question"
+              :error-messages="showErrors && !editedItem.question ? ['* Campo obrigatório'] : []"
               required
             />
             <v-select
@@ -100,8 +100,8 @@
         <v-card-text>
           <v-list-item>
             <v-list-item-content>
-              <v-list-item-title>Name:</v-list-item-title>
-              <v-list-item-subtitle>{{ selectedPerspective.name }}</v-list-item-subtitle>
+              <v-list-item-title>question:</v-list-item-title>
+              <v-list-item-subtitle>{{ selectedPerspective.question }}</v-list-item-subtitle>
             </v-list-item-content>
           </v-list-item>
           
@@ -160,19 +160,19 @@ export default {
       selectedPerspective: null,
 
       editedItem: {
-        name: '',
+        question: '',
         data_type: 'opções',
         options: [] 
       },
 
       defaultItem: {
-        name: '',
+        question: '',
         data_type: 'opções',
         options: ''
       },
       perspectives: [],
       headers: [
-        { text: 'Nome', value: 'name' },
+        { text: 'Nome', value: 'question' },
         { text: 'Tipo de Dado', value: 'data_type' }
       ]
     }
@@ -202,7 +202,7 @@ export default {
     async save() {
       this.showErrors = true
 
-      if (!this.editedItem.name || !this.editedItem.data_type) {
+      if (!this.editedItem.question || !this.editedItem.data_type) {
         return
       }
 
@@ -214,8 +214,8 @@ export default {
       }
 
       const nomeExiste = this.perspectives.some(p => {
-        const nomeAtual = p.name.trim().toLowerCase()
-        const nomeNovo = this.editedItem.name.trim().toLowerCase()
+        const nomeAtual = p.question.trim().toLowerCase()
+        const nomeNovo = this.editedItem.question.trim().toLowerCase()
         return nomeAtual === nomeNovo
       })
 
@@ -233,8 +233,14 @@ export default {
         payload.options = []
       }
 
+      if (payload.data_type === 'opções') {
+        payload.data_type = 'string'
+      }
+
+
       try {
         const service = usePerspectiveApplicationService()
+        console.log('Payload:', payload)
         await service.createPerspective(this.projectId, payload)
         this.snackbarMessage = 'Perspetiva criada com sucesso!'
         this.snackbar = true

@@ -162,5 +162,4 @@ class PerspectiveAnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = PerspectiveAnswer
         fields = ['id', 'perspective', 'project', 'created_by', 'answer']
-        read_only_fields = ['id', 'user', 'answer']
-       
+        read_only_fields = ['id', 'created_by']
