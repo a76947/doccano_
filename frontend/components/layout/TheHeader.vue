@@ -34,7 +34,7 @@
     </v-btn>
 
     <v-btn
-      v-if="isAuthenticated"
+      v-if="isAuthenticated && isStaff"
       text
       class="text-capitalize"
       @click="$router.push(localePath('/users'))"
@@ -44,7 +44,7 @@
 
     <!-- ✅ Botão Perfis -->
     <v-btn
-      v-if="isAuthenticated"
+      v-if="isAuthenticated && isStaff"
       text
       class="text-capitalize"
       @click="$router.push(localePath('/perfis'))"
@@ -146,7 +146,7 @@ export default {
   },
 
   computed: {
-    ...mapGetters('auth', ['isAuthenticated', 'getUsername']),
+    ...mapGetters('auth', ['isAuthenticated', 'getUsername', 'isStaff']),
     ...mapGetters('projects', ['currentProject']),
     ...mapGetters('config', ['isRTL']),
 
