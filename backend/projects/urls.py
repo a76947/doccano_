@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views.perspective import PerspectiveViewSet
+from .views.perspective import PerspectiveQuestionViewSet, PerspectiveViewSet
 from .views.project import ProjectList, ProjectDetail, CloneProject
 from .views.tag import TagList, TagDetail
 from .views.member import MemberList, MemberDetail, MyRole
@@ -30,7 +30,16 @@ urlpatterns = [
     ),
 
     path(
-        "projects/<int:project_id>/perspectivesanswers/",  # Corrige o nome do endpoint
+        "projects/<int:project_id>/perspectives/<int:perspective_id>/questions/",
+        PerspectiveQuestionViewSet.as_view({
+            "get": "list",
+            "post": "create"
+        }),
+        name="perspectivequestion-list-create"
+    ),
+
+    path(
+        "projects/<int:project_id>/perspectivesanswers/",
         PerspectiveAnswerViewSet.as_view({
             "get": "list",
             "post": "create"

@@ -221,23 +221,46 @@ class Member(models.Model):
         unique_together = ("user", "project")
 
 class Perspective(models.Model):
+    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='perspectives')
+    name = models.CharField(max_length=100)  # Nome da perspectiva
+    description = models.CharField(max_length=200)  # Descrição da perspectiva
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+
+    def __str__(self):
+        return f"{self.name}"
+
+
+class PerspectiveQuestion(models.Model):
     DATA_TYPES = [
         ('int', 'Integer'),
         ('string', 'String'),
         ('boolean', 'Boolean'),
     ]
 
-    project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='perspectives')
-    question = models.CharField(max_length=100)
-    data_type = models.CharField(max_length=20, choices=DATA_TYPES)  # Corrige a indentação
-    options = models.JSONField(default=list, blank=True)  # Lista de opções
-
-    def __str__(self):
-        return f"{self.question} ({self.data_type})"
-    
-class PerspectiveAnswer(models.Model):
     perspective = models.ForeignKey(
         'Perspective', 
+        on_delete=models.CASCADE, 
+        related_name='questions'
+    )
+    question = models.CharField(max_length=100)  # Pergunta
+    data_type = models.CharField(max_length=20, choices=DATA_TYPES)  # Tipo de dado
+    options = models.JSONField(default=list, blank=True)  # Lista de opções (JSON)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    def __str__(self):
+        return f"{self.question} ({self.data_type})"
+
+
+class PerspectiveAnswer(models.Model):
+    question = models.ForeignKey(
+        'PerspectiveQuestion', 
         on_delete=models.CASCADE, 
         related_name='answers'
     )
@@ -251,7 +274,7 @@ class PerspectiveAnswer(models.Model):
         on_delete=models.SET_NULL,
         null=True,
     )
-    answer = models.TextField()
+    answer = models.TextField()  # Resposta
 
     def __str__(self):
-        return f"Answer to {self.perspective.question}: {self.answer}"
+        return f"Answer to {self.perspective.name}: {self.answer}"

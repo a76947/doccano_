@@ -15,6 +15,7 @@ from .models import (
     Tag,
     TextClassificationProject,
     Perspective,
+    PerspectiveQuestion,
     PerspectiveAnswer,
 )
 
@@ -150,16 +151,23 @@ class ProjectPolymorphicSerializer(PolymorphicSerializer):
     }
 
 class PerspectiveSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Perspective
+        fields = ['id', 'name', 'description', 'project','created_by'] 
+        
+
+class PerspectiveQuestionSerializer(serializers.ModelSerializer):
+    dataType = serializers.CharField(source='data_type')  # Mapeia 'dataType' para 'data_type' no modelo
     options = serializers.ListField(
         child=serializers.CharField(), required=False, allow_empty=True
     )
 
     class Meta:
-        model = Perspective
-        fields = ['id', 'question', 'data_type', 'options'] 
-        
+        model = PerspectiveQuestion
+        fields = ['id', 'question', 'dataType', 'options', 'created_by']
+
 class PerspectiveAnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = PerspectiveAnswer
-        fields = ['id', 'perspective', 'project', 'created_by', 'answer']
+        fields = ['id', 'question', 'project', 'created_by', 'answer']
         read_only_fields = ['id', 'created_by']
