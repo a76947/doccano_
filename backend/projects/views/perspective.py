@@ -35,3 +35,18 @@ class PerspectiveAnswerViewSet(viewsets.ModelViewSet):
         project_id = self.kwargs.get("project_id")  # Corrige o nome do parâmetro
         project = get_object_or_404(Project, id=project_id)
         serializer.save(project=project, created_by=self.request.user)
+
+
+class PerspectiveGroupViewSet(viewsets.ModelViewSet):
+    queryset = PerspectiveGroup.objects.all()
+    serializer_class = PerspectiveGroupSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        project_id = self.kwargs.get("project_id")
+        return PerspectiveGroup.objects.filter(project_id=project_id)
+
+    def perform_create(self, serializer):
+        project_id = self.kwargs.get("project_id")
+        project = get_object_or_404(Project, id=project_id)
+        serializer.save(project=project)
