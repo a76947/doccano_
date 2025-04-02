@@ -37,9 +37,16 @@ export class ApiPerspectiveRepository {
     return response.data
   }
 
+  async listAnswersByQuestion(projectId: string | number, questionId: string | number) {
+    const url = `/projects/${projectId}/perspective-answers/?perspective=${questionId}`
+    const response = await ApiService.get(url)
+    return response.data
+  }
+
   async delete(projectId: string | number, questionId: string | number) {
     const url = `/projects/${projectId}/perspectives/${questionId}/`
     const response = await ApiService.delete(url)
     return response.data
   }
+
 }

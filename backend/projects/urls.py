@@ -5,6 +5,7 @@ from .views.perspective import PerspectiveViewSet, PerspectiveGroupViewSet, Pers
 from .views.project import ProjectList, ProjectDetail, CloneProject
 from .views.tag import TagList, TagDetail
 from .views.member import MemberList, MemberDetail, MyRole
+from .views.permissions import MyProjectPermissions  # Import from the new file
 
 # Create router for ViewSets
 router = DefaultRouter()
@@ -26,4 +27,6 @@ urlpatterns = [
     path("projects/<int:project_id>/members", MemberList.as_view(), name="member_list"),
     path("projects/<int:project_id>/members/<int:member_id>", MemberDetail.as_view(), name="member_detail"),
     path("projects/<int:project_id>/clone", CloneProject.as_view(), name="clone_project"),
+    path('projects/<int:project_id>/my-permissions/', MyProjectPermissions.as_view(), name='my-project-permissions'),
+
 ]

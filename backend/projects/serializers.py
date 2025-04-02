@@ -161,10 +161,31 @@ class PerspectiveSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
         
 class PerspectiveAnswerSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.SerializerMethodField()
+    # If there's no created_at field, you can add a method field to return current time
+    created_at = serializers.SerializerMethodField(required=False)
+    
     class Meta:
         model = PerspectiveAnswer
-        fields = ['id', 'perspective', 'project', 'created_by', 'answer']
-        read_only_fields = ['id', 'created_by']
+        fields = [
+            'id', 'perspective', 'project', 'answer', 
+            'created_by', 'created_by_username', 'created_at'
+        ]
+    
+    def get_created_by_username(self, obj):
+        if obj.created_by:
+            return obj.created_by.username
+        return None
+    
+    def get_created_at(self, obj):
+        # If your model has a different timestamp field, use that
+        if hasattr(obj, 'created_date'):
+            return obj.created_date
+        if hasattr(obj, 'timestamp'):
+            return obj.timestamp
+        # Otherwise return current time
+        from django.utils import timezone
+        return timezone.now()
 
 class PerspectiveGroupSerializer(serializers.ModelSerializer):
     questions = PerspectiveSerializer(many=True, read_only=True)

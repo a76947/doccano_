@@ -31,6 +31,10 @@ export class PerspectiveApplicationService {
   async deletePerspective(projectId: string | number, questionId: string | number) {
     return await this.repository.delete(projectId, questionId)
   }
+
+  async listPerspectiveAnswersByQuestion(projectId: string | number, questionId: string | number) {
+    return await this.repository.listAnswersByQuestion(projectId, questionId)
+  }
 }
 
 // Function-based implementation (for Vue 3 composition API)
@@ -57,6 +61,9 @@ export function usePerspectiveApplicationService() {
       repository.listAnswers(projectId),
 
     deletePerspective: (projectId: string | number, questionId: string | number) => 
-      repository.delete(projectId, questionId)
+      repository.delete(projectId, questionId),
+
+    listPerspectiveAnswersByQuestion: (projectId: string | number, questionId: string | number) => 
+      repository.listAnswersByQuestion(projectId, questionId)
   }
 }
