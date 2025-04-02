@@ -493,6 +493,7 @@ export default {
       currentGroup: null,
       perspectiveGroups: [],
       questionAnswers: {},
+      answeredAnsers: {},
       
       editedGroup: {
         name: '',
@@ -543,6 +544,8 @@ export default {
     validGroups() {
       return this.perspectiveGroups.filter(group => !!group)
     },
+
+    
 
     // Add this to your computed properties
     isAdmin() {
@@ -704,41 +707,40 @@ export default {
     
     async saveAnswers() {
       try {
-        const answersToSave = []
+        const answersToSave = [];
         
-        // Format answers for API submission
         for (const [questionId, answer] of Object.entries(this.questionAnswers)) {
-          // Skip empty answers
-          if (answer === null || answer === '') continue
+          if (answer === null || answer === '') continue;
           
           answersToSave.push({
-            perspective: parseInt(questionId), // Convert to integer
-            project: parseInt(this.projectId), // Convert to integer
-            answer: String(answer)  // Convert all answers to strings for storage
-          })
+            perspective: parseInt(questionId),
+            project: parseInt(this.projectId),
+            answer: String(answer)
+          });
         }
         
-        // Only proceed if we have answers
         if (answersToSave.length === 0) {
-          this.snackbarErrorMessage = 'Please answer at least one question'
-          this.snackbarError = true
-          return
+          this.snackbarErrorMessage = 'Please answer at least one question';
+          this.snackbarError = true;
+          return;
         }
         
-        // Save each answer
         const savePromises = answersToSave.map(answer => 
           this.$services.perspective.createPerspectiveAnswer(this.projectId, answer)
-        )
+        );
         
-        await Promise.all(savePromises)
+        await Promise.all(savePromises);
         
-        this.snackbarMessage = 'Answers submitted successfully!'
-        this.snackbar = true
-        this.closeAnswerDialog()
+        this.snackbarMessage = 'Answers submitted successfully!';
+        this.snackbar = true;
+        this.closeAnswerDialog();
+        
+        // Atualizar grupos para refletir mudanças
+        await this.fetchPerspectiveGroups();
       } catch (e) {
-        console.error('Error saving answers:', e.response?.data || e)
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Error saving answers'
-        this.snackbarError = true
+        console.error('Error saving answers:', e.response?.data || e);
+        this.snackbarErrorMessage = e.response?.data?.detail || 'Error saving answers';
+        this.snackbarError = true;
       }
     },
 
@@ -756,22 +758,48 @@ export default {
     },
 
     openAnswerQuestionsDialog(group) {
-      this.currentGroup = group
-      this.questionAnswers = {}  // Reset the answers
-      
-      // Initialize answers for existing questions
-      if (group && group.questions) {
-        group.questions.forEach(question => {
-          // Default values by question type
+      this.currentGroup = group;
+      console.log('Opening answer dialog for group:', group);
+
+      // Reset the answers
+      this.questionAnswers = {};
+      this.answeredAnswers = {};
+
+      // Buscar respostas do grupo atual
+      this.fetchGroupResponses(group).then((responses) => {
+        console.log('Fetched responses for group:', responses);
+        console.log('Group:', group.questions.map(question => question.id).join(', '));
+        // Filtrar perguntas que já foram respondidas pelo utilizador atual
+        const groupId = group.id;
+        console.log('Group ID:', groupId);
+        const filteredQuestions = group.questions.filter((question) => {
+          const userResponses = responses[question.id] || [];
+          return !userResponses.some((response) => response.created_by === userId);
+        });
+
+        console.log('User ID:', userId);
+        console.log('Original questions:', group.questions);
+        console.log('Filtered questions:', filteredQuestions);
+
+        // Atualizar as perguntas do grupo com as perguntas filtradas
+        this.currentGroup.questions = filteredQuestions;
+
+        // Inicializar respostas para perguntas restantes
+        this.currentGroup.questions.forEach((question) => {
           if (question.data_type === 'boolean') {
-            this.questionAnswers[question.id] = null
+            this.questionAnswers[question.id] = null;
           } else {
-            this.questionAnswers[question.id] = ''
+            this.questionAnswers[question.id] = '';
           }
-        })
-      }
-      
-      this.dialogAnswerQuestions = true
+        });
+
+        // Abrir o diálogo após filtrar as perguntas
+        this.dialogAnswerQuestions = true;
+      }).catch((error) => {
+        console.error('Error fetching group responses:', error);
+        this.snackbarErrorMessage = 'Failed to fetch responses for the group.';
+        this.snackbarError = true;
+      });
     },
 
     confirmDeleteQuestion(question) {
@@ -880,6 +908,47 @@ export default {
         return 'N/A';
       }
     },
+
+    async fetchGroupResponses(group) {
+      if (!group || !group.questions || group.questions.length === 0) {
+        this.snackbarErrorMessage = 'This group has no questions to fetch responses for.';
+        this.snackbarError = true;
+        return;
+      }
+
+      this.loadingResponses = true;
+      const allResponses = {};
+
+      try {
+        for (const question of group.questions) {
+          const response = await this.$services.perspective.listPerspectiveAnswersByQuestion(
+            this.projectId,
+            question.id
+          );
+          allResponses[question.id] = response.results || [];
+        }
+
+        console.log('All responses for group:', allResponses);
+        this.snackbarMessage = 'Responses fetched successfully!';
+        this.snackbar = true;
+
+        // You can now use `allResponses` to display or process the data
+        return allResponses;
+      } catch (error) {
+        console.error('Error fetching group responses:', error);
+        this.snackbarErrorMessage = 'Failed to fetch responses for the group.';
+        this.snackbarError = true;
+      } finally {
+        this.loadingResponses = false;
+      }
+    },
+
+    async viewGroupResponses(group) {
+      const responses = await this.fetchGroupResponses(group);
+      console.log('Responses for the group:', responses);
+
+      // Aqui você pode implementar lógica adicional para exibir as respostas
+    }
   }
 }
 </script>
