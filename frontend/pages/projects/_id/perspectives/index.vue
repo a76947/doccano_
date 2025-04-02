@@ -1,14 +1,38 @@
 <template>
   <v-card>
     <v-card-title>
-      <v-btn 
-        class="text-capitalize" 
-        color="primary" 
-        @click.stop="openCreateGroupDialog()"
-        v-if="!hasGroups"
-      >
-        Create Perspective Group
-      </v-btn>
+      <template v-if="!hasGroups">
+        <v-btn 
+          class="text-capitalize" 
+          color="primary" 
+          @click.stop="openCreateGroupDialog()"
+          v-if="isAdmin"
+        >
+          Create Perspective Group
+        </v-btn>
+        <v-tooltip v-else bottom>
+          <template #activator="{ on, attrs }">
+            <v-btn 
+              class="text-capitalize" 
+              color="primary" 
+              disabled
+              v-bind="attrs"
+              v-on="on"
+            >
+              Create Perspective Group
+            </v-btn>
+          </template>
+          <span>Only administrators can create perspective groups</span>
+        </v-tooltip>
+        <v-alert
+          v-if="!isAdmin"
+          type="error"
+          dense
+          class="mt-2"
+        >
+          You do not have permission to create perspective groups. Please contact an administrator.
+        </v-alert>
+      </template>
       <v-alert
         v-else
         type="info"
