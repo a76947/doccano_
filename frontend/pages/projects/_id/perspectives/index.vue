@@ -567,7 +567,7 @@ export default {
         this.perspectiveGroups = response.results || response || []
       } catch (err) {
         console.error('Error fetching perspective groups', err)
-        this.snackbarErrorMessage = 'Failed to load perspective groups'
+        this.snackbarErrorMessage = 'Failed to connect to the database, try again later'
         this.snackbarError = true
       }
     },
@@ -833,7 +833,7 @@ export default {
         console.log('Question responses:', this.questionResponses);
       } catch (error) {
         console.error('Error loading responses:', error);
-        this.snackbarErrorMessage = 'Failed to load responses';
+        this.snackbarErrorMessage = 'Failed to connect to the database, try again later';
         this.snackbarError = true;
       } finally {
         this.loadingResponses = false;
