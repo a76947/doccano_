@@ -77,8 +77,9 @@
             </div>
             
             <v-alert
-              v-if="showErrors && (editedQuestion.data_type === 'string' 
-              || editedQuestion.data_type === 'int') && editedQuestion.options.length === 0"
+              v-if="showErrors 
+                && (editedQuestion.data_type === 'string' || editedQuestion.data_type === 'int') 
+                && editedQuestion.options.length === 0"
               dense
               type="error"
               class="mb-3"
@@ -93,7 +94,8 @@
                 hide-details
                 class="mr-2"
               />
-              <v-btn icon color="error" @click="removeOption(index)">
+              <!-- Botão para remover essa opção -->
+              <v-btn icon color="error" dark @click="removeOption(index)">
                 <v-icon small>mdi-delete</v-icon>
               </v-btn>
             </div>
@@ -113,6 +115,82 @@
           <v-spacer />
           <v-btn text @click="closeQuestionDialog">Cancel</v-btn>
           <v-btn color="primary" text @click="saveQuestion">Save</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Question Editing Dialog -->
+    <v-dialog v-model="dialogEditQuestion" max-width="500px">
+      <v-card>
+        <v-card-title class="headline">Edit Question</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="editedQuestion.question"
+            label="Question"
+            :error="showErrors && !editedQuestion.question"
+            :error-messages="showErrors && !editedQuestion.question ? ['* Required field'] : []"
+            required
+          />
+          <v-select
+            v-model="editedQuestion.data_type"
+            :items="dataTypes"
+            label="Data Type"
+            :error="showErrors && !editedQuestion.data_type"
+            :error-messages="showErrors && !editedQuestion.data_type ? ['* Required field'] : []"
+            required
+          />
+
+          <!-- Options visible for string/int -->
+          <div v-if="editedQuestion.data_type === 'string' || editedQuestion.data_type === 'int'">
+            <div class="d-flex align-center mb-2">
+              <h3 class="subtitle-1">Answer Options</h3>
+              <v-spacer></v-spacer>
+              <v-btn small color="primary" @click="addOption">
+                <v-icon small left>mdi-plus</v-icon> Add Option
+              </v-btn>
+            </div>
+
+            <v-alert
+              v-if="showErrors && editedQuestion.options.length === 0"
+              dense
+              type="error"
+              class="mb-3"
+            >
+              Please add at least one answer option
+            </v-alert>
+
+            <div
+              v-for="(option, index) in editedQuestion.options"
+              :key="index"
+              class="mb-2 d-flex"
+            >
+              <v-text-field
+                v-model="editedQuestion.options[index]"
+                :label="`Option ${index + 1}`"
+                hide-details
+                class="mr-2"
+              />
+              <!-- Botão para remover essa opção -->
+              <v-btn icon color="error" dark @click="removeOption(index)">
+                <v-icon small>mdi-delete</v-icon>
+              </v-btn>
+            </div>
+          </div>
+
+          <!-- Boolean info -->
+          <v-alert
+            v-if="editedQuestion.data_type === 'boolean'"
+            type="info"
+            dense
+            class="mt-2"
+          >
+            Boolean questions will have Yes/No answer options automatically.
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="closeEditQuestionDialog">Cancel</v-btn>
+          <v-btn color="primary" text @click="saveEditedQuestion">Save Changes</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -183,6 +261,17 @@
                       >
                         <v-icon>mdi-eye</v-icon>
                       </v-btn>
+
+                      <!-- Botão Edit -->
+                      <v-btn
+                        color="warning"
+                        class="mx-1"
+                        small
+                        @click.stop="openEditQuestionDialog(group, question)"
+                      >
+                        <v-icon left small>mdi-pencil</v-icon>
+                        Edit
+                      </v-btn>
                       
                       <v-btn 
                         color="error"
@@ -206,7 +295,7 @@
       </v-expansion-panel>
     </v-expansion-panels>
 
-    <!-- Add a new dialog for answering questions -->
+    <!-- Dialog for answering questions -->
     <v-dialog v-model="dialogAnswerQuestions" max-width="600px">
       <v-card>
         <v-card-title class="headline">
@@ -271,7 +360,7 @@
       </v-card>
     </v-dialog>
     
-    <!-- Add this dialog after your other dialogs, before the closing </v-card> tag -->
+    <!-- Confirm Delete Dialog -->
     <v-dialog v-model="dialogConfirmDelete" max-width="400px">
       <v-card>
         <v-card-title class="headline">Delete Question</v-card-title>
@@ -314,35 +403,41 @@ export default {
     return {
       dialogCreateGroup: false,
       dialogCreateQuestion: false,
+      dialogEditQuestion: false,
       dialogAnswerQuestions: false,
+      dialogConfirmDelete: false,
+
+      // Variáveis de estado e dados
+      perspectiveGroups: [],
+      questionAnswers: {},
+      questionToDelete: null,
+      currentGroup: null,
+
+      // Para controlar validações e mensagens
+      showErrors: false,
       snackbar: false,
       snackbarMessage: '',
       snackbarError: false,
       snackbarErrorMessage: '',
-      showErrors: false,
-      currentGroup: null,
-      perspectiveGroups: [],
-      questionAnswers: {},
-      
+
+      // Objetos para criação/edição
       editedGroup: {
         name: '',
         description: ''
       },
-      
       editedQuestion: {
+        id: null,
         question: '',
         data_type: 'string',
         options: []
       },
 
+      // Tipos de dados possíveis
       dataTypes: [
         { text: 'Text (with options)', value: 'string' },
         { text: 'Number (with options)', value: 'int' },
         { text: 'Yes/No', value: 'boolean' }
-      ],
-
-      dialogConfirmDelete: false,
-      questionToDelete: null,
+      ]
     }
   },
 
@@ -350,13 +445,9 @@ export default {
     projectId() {
       return this.$route.params.id
     },
-    
-    // Computed property to check if we have groups
     hasGroups() {
       return this.perspectiveGroups && this.perspectiveGroups.length > 0
     },
-    
-    // Computed property to filter out null groups
     validGroups() {
       return this.perspectiveGroups.filter(group => !!group)
     }
@@ -367,214 +458,36 @@ export default {
   },
 
   methods: {
+    // ---------------------------------------------------------------------
+    // LISTAR GROUPS
+    // ---------------------------------------------------------------------
     async fetchPerspectiveGroups() {
       try {
-        // Use the Vue 2 service pattern
         const response = await this.$services.perspective.listPerspectiveGroups(this.projectId)
-        console.log('API response:', response) // Debug response
+        console.log('API response:', response)
         this.perspectiveGroups = response.results || response || []
       } catch (err) {
         console.error('Error fetching perspective groups', err)
-        this.snackbarErrorMessage = 'Failed to load perspective groups'
+
+        if (!err.response) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else if (err.response.status >= 500) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else {
+          this.snackbarErrorMessage = err.response.data?.detail 
+            || 'De momento não é possivel realizar esta operação.'
+        }
         this.snackbarError = true
       }
     },
-    
-    // Helper method to check if a group has questions
+
     hasQuestions(group) {
       return group && group.questions && group.questions.length > 0
     },
 
-    openAddQuestionDialog(group) {
-      this.currentGroup = group
-      this.editedQuestion = {
-        question: '',
-        data_type: 'string',
-        options: []
-      }
-      this.dialogCreateQuestion = true
-    },
-
-    closeGroupDialog() {
-      this.dialogCreateGroup = false
-      this.showErrors = false
-      this.editedGroup = {
-        name: '',
-        description: ''
-      }
-    },
-
-    closeQuestionDialog() {
-      this.dialogCreateQuestion = false
-      this.showErrors = false
-      this.currentGroup = null
-      this.editedQuestion = {
-        question: '',
-        data_type: 'string',
-        options: []
-      }
-    },
-
-    closeAnswerDialog() {
-      this.dialogAnswerQuestions = false
-      this.currentGroup = null
-      this.questionAnswers = {}
-    },
-
-    async saveGroup() {
-      this.showErrors = true
-      if (!this.editedGroup.name) {
-        return
-      }
-
-      try {
-        await this.$services.perspective.createPerspectiveGroup(this.projectId, this.editedGroup)
-        
-        this.snackbarMessage = 'Perspective group created successfully!'
-        this.snackbar = true
-        this.closeGroupDialog()
-        this.fetchPerspectiveGroups()
-      } catch (e) {
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Error creating perspective group'
-        this.snackbarError = true
-      }
-    },
-
-    async saveQuestion() {
-      this.showErrors = true
-      if (!this.editedQuestion.question || !this.editedQuestion.data_type) {
-        return
-      }
-
-      // Validate options for string and int types
-      if ((this.editedQuestion.data_type === 'string' || this.editedQuestion.data_type === 'int') 
-          && this.editedQuestion.options.length === 0) {
-        return
-      }
-      
-      // Filter out empty options
-      const filteredOptions = this.editedQuestion.options.filter(opt => opt.trim() !== '')
-      
-      const payload = { 
-        ...this.editedQuestion,
-        options: filteredOptions,
-        group: this.currentGroup.id,
-        project: this.projectId,
-        name: this.editedQuestion.question 
-      }
-
-      try {
-        await this.$services.perspective.createPerspective(this.projectId, payload)
-        
-        this.snackbarMessage = 'Question added successfully!'
-        this.snackbar = true
-        this.closeQuestionDialog()
-        this.fetchPerspectiveGroups()
-      } catch (e) {
-        console.error('Error adding question:', e.response?.data || e)
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Error adding question'
-        this.snackbarError = true
-      }
-    },
-    
-    async saveAnswers() {
-      try {
-        const answersToSave = []
-        
-        // Format answers for API submission
-        for (const [questionId, answer] of Object.entries(this.questionAnswers)) {
-          // Skip empty answers
-          if (answer === null || answer === '') continue
-          
-          answersToSave.push({
-            perspective: parseInt(questionId), // Convert to integer
-            project: parseInt(this.projectId), // Convert to integer
-            answer: String(answer)  // Convert all answers to strings for storage
-          })
-        }
-        
-        // Only proceed if we have answers
-        if (answersToSave.length === 0) {
-          this.snackbarErrorMessage = 'Please answer at least one question'
-          this.snackbarError = true
-          return
-        }
-        
-        // Save each answer
-        const savePromises = answersToSave.map(answer => 
-          this.$services.perspective.createPerspectiveAnswer(this.projectId, answer)
-        )
-        
-        await Promise.all(savePromises)
-        
-        this.snackbarMessage = 'Answers submitted successfully!'
-        this.snackbar = true
-        this.closeAnswerDialog()
-      } catch (e) {
-        console.error('Error saving answers:', e.response?.data || e)
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Error saving answers'
-        this.snackbarError = true
-      }
-    },
-
-    showQuestionDetails(question) {
-      // Implement this method if needed
-      console.log('Question details:', question)
-    },
-
-    addOption() {
-      this.editedQuestion.options.push('')
-    },
-
-    removeOption(index) {
-      this.editedQuestion.options.splice(index, 1)
-    },
-
-    openAnswerQuestionsDialog(group) {
-      this.currentGroup = group
-      this.questionAnswers = {}  // Reset the answers
-      
-      // Initialize answers for existing questions
-      if (group && group.questions) {
-        group.questions.forEach(question => {
-          // Default values by question type
-          if (question.data_type === 'boolean') {
-            this.questionAnswers[question.id] = null
-          } else {
-            this.questionAnswers[question.id] = ''
-          }
-        })
-      }
-      
-      this.dialogAnswerQuestions = true
-    },
-
-    confirmDeleteQuestion(question) {
-      this.questionToDelete = question
-      this.dialogConfirmDelete = true
-    },
-
-    async deleteQuestion() {
-      if (!this.questionToDelete) return
-
-      try {
-        await this.$services.perspective.deletePerspective(
-          this.projectId, 
-          this.questionToDelete.id
-        )
-        
-        this.snackbarMessage = 'Question deleted successfully!'
-        this.snackbar = true
-        this.dialogConfirmDelete = false
-        this.questionToDelete = null
-        this.fetchPerspectiveGroups() // Refresh the list
-      } catch (e) {
-        console.error('Error deleting question:', e.response?.data || e)
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Error deleting question'
-        this.snackbarError = true
-      }
-    },
-
+    // ---------------------------------------------------------------------
+    // CRIAR GROUP
+    // ---------------------------------------------------------------------
     openCreateGroupDialog() {
       if (this.hasGroups) {
         this.snackbarErrorMessage = 'Only one perspective group is allowed per project'
@@ -583,6 +496,294 @@ export default {
       }
       this.dialogCreateGroup = true
     },
+    closeGroupDialog() {
+      this.dialogCreateGroup = false
+      this.showErrors = false
+      this.editedGroup = { name: '', description: '' }
+    },
+    async saveGroup() {
+      this.showErrors = true
+      if (!this.editedGroup.name) {
+        return
+      }
+      try {
+        await this.$services.perspective.createPerspectiveGroup(this.projectId, this.editedGroup)
+        this.snackbarMessage = 'Perspective group created successfully!'
+        this.snackbar = true
+        this.closeGroupDialog()
+        this.fetchPerspectiveGroups()
+      } catch (e) {
+        console.error('Error creating perspective group', e)
+        if (!e.response) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else if (e.response.status >= 500) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else {
+          this.snackbarErrorMessage = e.response.data?.detail || 'Error creating perspective group'
+        }
+        this.snackbarError = true
+      }
+    },
+
+    // ---------------------------------------------------------------------
+    // CRIAR PERGUNTA
+    // ---------------------------------------------------------------------
+    openAddQuestionDialog(group) {
+      this.currentGroup = group
+      this.editedQuestion = {
+        id: null,
+        question: '',
+        data_type: 'string',
+        options: []
+      }
+      this.dialogCreateQuestion = true
+    },
+    closeQuestionDialog() {
+      this.dialogCreateQuestion = false
+      this.showErrors = false
+      this.currentGroup = null
+      this.editedQuestion = { id: null, question: '', data_type: 'string', options: [] }
+    },
+    async saveQuestion() {
+      this.showErrors = true
+
+      // Verifica se "question" e "data_type" estão preenchidos
+      if (!this.editedQuestion.question || !this.editedQuestion.data_type) {
+        return
+      }
+
+      // Filtra opções vazias
+      const filteredOptions = this.editedQuestion.options.filter(opt => opt.trim() !== '')
+
+      // Se havia opções vazias
+      if (filteredOptions.length < this.editedQuestion.options.length) {
+        this.snackbarErrorMessage = 'Some options are empty. Please fill them or remove them.'
+        this.snackbarError = true
+        return
+      }
+
+      // Se for string/int, exige ao menos 1 opção
+      if (
+        (this.editedQuestion.data_type === 'string' || this.editedQuestion.data_type === 'int')
+        && filteredOptions.length === 0
+      ) {
+        this.snackbarErrorMessage = 'Please add at least one answer option.'
+        this.snackbarError = true
+        return
+      }
+
+      const payload = {
+        ...this.editedQuestion,
+        options: filteredOptions,
+        group: this.currentGroup.id,
+        project: this.projectId,
+        name: this.editedQuestion.question
+      }
+
+      try {
+        await this.$services.perspective.createPerspective(this.projectId, payload)
+        this.snackbarMessage = 'Question added successfully!'
+        this.snackbar = true
+        this.closeQuestionDialog()
+        this.fetchPerspectiveGroups()
+      } catch (e) {
+        console.error('Error adding question:', e)
+        if (!e.response) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else if (e.response.status >= 500) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else {
+          this.snackbarErrorMessage = e.response.data?.detail || 'Error adding question'
+        }
+        this.snackbarError = true
+      }
+    },
+
+    // ---------------------------------------------------------------------
+    // EDITAR PERGUNTA
+    // ---------------------------------------------------------------------
+    openEditQuestionDialog(group, question) {
+      this.currentGroup = group
+      this.editedQuestion = {
+        id: question.id,
+        question: question.question,
+        data_type: question.data_type,
+        options: question.options ? [...question.options] : []
+      }
+      this.dialogEditQuestion = true
+    },
+    closeEditQuestionDialog() {
+      this.dialogEditQuestion = false
+      this.showErrors = false
+      this.currentGroup = null
+      this.editedQuestion = { id: null, question: '', data_type: 'string', options: [] }
+    },
+    async saveEditedQuestion() {
+      this.showErrors = true
+      if (!this.editedQuestion.question || !this.editedQuestion.data_type) {
+        return
+      }
+
+      // Filtra opções vazias
+      const filteredOptions = this.editedQuestion.options.filter(opt => opt.trim() !== '')
+
+      // Se havia opções vazias
+      if (filteredOptions.length < this.editedQuestion.options.length) {
+        this.snackbarErrorMessage = 'Some options are empty. Please fill them or remove them.'
+        this.snackbarError = true
+        return
+      }
+
+      // Se for string/int, exige ao menos 1 opção
+      if (
+        (this.editedQuestion.data_type === 'string' || this.editedQuestion.data_type === 'int')
+        && filteredOptions.length === 0
+      ) {
+        this.snackbarErrorMessage = 'Please add at least one answer option.'
+        this.snackbarError = true
+        return
+      }
+
+      const payload = {
+        ...this.editedQuestion,
+        options: filteredOptions,
+        group: this.currentGroup.id,
+        project: this.projectId,
+        name: this.editedQuestion.question
+      }
+
+      try {
+        await this.$services.perspective.updatePerspective(
+          this.projectId,
+          this.editedQuestion.id,
+          payload
+        )
+        this.snackbarMessage = 'Question updated successfully!'
+        this.snackbar = true
+        this.closeEditQuestionDialog()
+        this.fetchPerspectiveGroups()
+      } catch (e) {
+        console.error('Error updating question:', e)
+        if (!e.response) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else if (e.response.status >= 500) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else {
+          this.snackbarErrorMessage = e.response.data?.detail || 'Error updating question'
+        }
+        this.snackbarError = true
+      }
+    },
+
+    // ---------------------------------------------------------------------
+    // RESPONDER PERGUNTAS
+    // ---------------------------------------------------------------------
+    openAnswerQuestionsDialog(group) {
+      this.currentGroup = group
+      this.questionAnswers = {}
+      if (group && group.questions) {
+        group.questions.forEach(question => {
+          if (question.data_type === 'boolean') {
+            this.questionAnswers[question.id] = null
+          } else {
+            this.questionAnswers[question.id] = ''
+          }
+        })
+      }
+      this.dialogAnswerQuestions = true
+    },
+    closeAnswerDialog() {
+      this.dialogAnswerQuestions = false
+      this.currentGroup = null
+      this.questionAnswers = {}
+    },
+    async saveAnswers() {
+      try {
+        const answersToSave = []
+        for (const [questionId, answer] of Object.entries(this.questionAnswers)) {
+          if (answer === null || answer === '') continue
+          answersToSave.push({
+            perspective: parseInt(questionId),
+            project: parseInt(this.projectId),
+            answer: String(answer)
+          })
+        }
+        if (answersToSave.length === 0) {
+          this.snackbarErrorMessage = 'Please answer at least one question'
+          this.snackbarError = true
+          return
+        }
+        const savePromises = answersToSave.map(answer =>
+          this.$services.perspective.createPerspectiveAnswer(this.projectId, answer)
+        )
+        await Promise.all(savePromises)
+        this.snackbarMessage = 'Answers submitted successfully!'
+        this.snackbar = true
+        this.closeAnswerDialog()
+      } catch (e) {
+        console.error('Error saving answers:', e)
+        if (!e.response) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else if (e.response.status >= 500) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else {
+          this.snackbarErrorMessage = e.response.data?.detail || 'Error saving answers'
+        }
+        this.snackbarError = true
+      }
+    },
+
+    // ---------------------------------------------------------------------
+    // DETALHES & ELIMINAR PERGUNTA
+    // ---------------------------------------------------------------------
+    showQuestionDetails(question) {
+      console.log('Question details:', question)
+      // Podes abrir um modal adicional, se quiseres
+    },
+    confirmDeleteQuestion(question) {
+      this.questionToDelete = question
+      this.dialogConfirmDelete = true
+    },
+    async deleteQuestion() {
+      if (!this.questionToDelete) return
+      try {
+        await this.$services.perspective.deletePerspective(
+          this.projectId, 
+          this.questionToDelete.id
+        )
+        this.snackbarMessage = 'Question deleted successfully!'
+        this.snackbar = true
+        this.dialogConfirmDelete = false
+        this.questionToDelete = null
+        this.fetchPerspectiveGroups()
+      } catch (e) {
+        console.error('Error deleting question:', e)
+        if (!e.response) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else if (e.response.status >= 500) {
+          this.snackbarErrorMessage = 'De momento não é possivel realizar esta operação.'
+        } else {
+          this.snackbarErrorMessage = e.response.data?.detail || 'Error deleting question'
+        }
+        this.snackbarError = true
+      }
+    },
+
+    // ---------------------------------------------------------------------
+    // FUNÇÕES AUXILIARES (OPÇÕES)
+    // ---------------------------------------------------------------------
+    addOption() {
+      this.editedQuestion.options.push('')
+    },
+    removeOption(index) {
+      this.editedQuestion.options.splice(index, 1)
+    }
   }
 }
 </script>
+
+<style scoped>
+::v-deep .v-dialog {
+  width: 500px;
+}
+</style>

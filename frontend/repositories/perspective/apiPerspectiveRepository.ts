@@ -42,4 +42,11 @@ export class ApiPerspectiveRepository {
     const response = await ApiService.delete(url)
     return response.data
   }
+
+  // NOVO MÉTODO UPDATE:
+  async update(projectId: string | number, questionId: string | number, payload: any) {
+    const url = `/projects/${projectId}/perspectives/${questionId}/`
+    const response = await ApiService.put(url, payload)
+    return response.data
+  }
 }

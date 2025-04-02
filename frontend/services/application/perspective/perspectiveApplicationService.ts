@@ -1,6 +1,6 @@
 import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
 
-// Class-based implementation (for the Vue 2 app services system)
+// Class-based implementation (para Vue 2 "services")
 export class PerspectiveApplicationService {
   constructor(private readonly repository: ApiPerspectiveRepository) {}
 
@@ -31,9 +31,14 @@ export class PerspectiveApplicationService {
   async deletePerspective(projectId: string | number, questionId: string | number) {
     return await this.repository.delete(projectId, questionId)
   }
+
+  // NOVO método para atualizar (PUT) uma perspetiva
+  async updatePerspective(projectId: string | number, questionId: string | number, data: any) {
+    return await this.repository.update(projectId, questionId, data)
+  }
 }
 
-// Function-based implementation (for Vue 3 composition API)
+// Function-based implementation (para Vue 3 Composition API)
 export function usePerspectiveApplicationService() {
   const repository = new ApiPerspectiveRepository()
   
@@ -57,6 +62,10 @@ export function usePerspectiveApplicationService() {
       repository.listAnswers(projectId),
 
     deletePerspective: (projectId: string | number, questionId: string | number) => 
-      repository.delete(projectId, questionId)
+      repository.delete(projectId, questionId),
+
+    // NOVO método para atualizar (PUT) uma perspetiva
+    updatePerspective: (projectId: string | number, questionId: string | number, data: any) =>
+      repository.update(projectId, questionId, data)
   }
 }
