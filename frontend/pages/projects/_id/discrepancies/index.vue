@@ -13,6 +13,13 @@
       </template>
     </v-card-title>
 
+    <!-- Order Selector -->
+    <v-row justify="end" class="mb-3">
+      <v-btn small @click="toggleSortOrder">
+        Sort by Percentage: {{ sortOrder === 'asc' ? 'Ascending' : 'Descending' }}
+      </v-btn>
+    </v-row>
+
     <!-- List of Discrepancies -->
     <v-expansion-panels v-if="hasDiscrepancies">
       <v-expansion-panel v-for="discrepancy in discrepancies" :key="discrepancy.id">
@@ -35,7 +42,10 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(percentage, label) in discrepancy.percentages" :key="label">
+                  <tr
+                    v-for="(percentage, label) in sortedPercentages(discrepancy.percentages)"
+                    :key="label"
+                  >
                     <td>{{ label }}</td>
                     <td>{{ percentage.toFixed(2) }}%</td>
                   </tr>
@@ -77,6 +87,7 @@ export default {
       snackbarError: false,
       snackbarErrorMessage: '',
       loading: true,
+      sortOrder: 'asc',
     };
   },
 
@@ -112,6 +123,17 @@ export default {
 
     truncateText(text, maxLength) {
       return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+    },
+
+    toggleSortOrder() {
+      this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+    },
+
+    sortedPercentages(percentages) {
+      const sorted = Object.entries(percentages).sort((a, b) => {
+        return this.sortOrder === 'asc' ? a[1] - b[1] : b[1] - a[1];
+      });
+      return Object.fromEntries(sorted);
     },
   },
 };
