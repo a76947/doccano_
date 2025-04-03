@@ -29,6 +29,7 @@ import { APISegmentationRepository } from '~/repositories/tasks/apiSegmentationR
 
 // IMPORTA O TEU NOVO REPOSITÓRIO
 import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
+import { ApiDiscrepancieRepository } from '~/repositories/discrepancies/apiDiscrepancieRepository'
 
 export interface Repositories {
   // User
@@ -76,6 +77,7 @@ export interface Repositories {
 
   // Perspective
   perspective: ApiPerspectiveRepository
+  discrepancy: ApiDiscrepancieRepository // Add this line
 }
 
 declare module 'vue/types/vue' {
@@ -130,6 +132,8 @@ const repositories: Repositories = {
 
   // Perspective
   perspective: {} as ApiPerspectiveRepository // Will be replaced in services.ts
+  ,
+  discrepancy: new ApiDiscrepancieRepository()
 }
 
 const plugin: Plugin = (_, inject) => {

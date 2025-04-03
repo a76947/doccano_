@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .views.perspective import PerspectiveViewSet, PerspectiveGroupViewSet, PerspectiveAnswerViewSet
-from .views.project import ProjectList, ProjectDetail, CloneProject
+from .views.project import DiscrepancyAnalysisView, ProjectList, ProjectDetail, CloneProject
 from .views.tag import TagList, TagDetail
 from .views.member import MemberList, MemberDetail, MyRole
 from .views.permissions import MyProjectPermissions  # Import from the new file
@@ -29,4 +29,6 @@ urlpatterns = [
     path("projects/<int:project_id>/clone", CloneProject.as_view(), name="clone_project"),
     path('projects/<int:project_id>/my-permissions/', MyProjectPermissions.as_view(), name='my-project-permissions'),
 
+
+    path("projects/<int:project_id>/discrepacies", DiscrepancyAnalysisView.as_view(), name="discrepancy_analysis"),
 ]

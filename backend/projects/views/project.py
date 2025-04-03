@@ -6,6 +6,11 @@ from rest_framework import filters, generics, status, views
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 
+from examples.models import Example
+from django.db.models import Count
+from rest_framework.exceptions import NotFound
+from rest_framework.views import APIView
+
 from projects.models import Project
 from projects.permissions import IsProjectAdmin, IsProjectStaffAndReadOnly
 from projects.serializers import ProjectPolymorphicSerializer
@@ -65,3 +70,34 @@ class CloneProject(views.APIView):
         cloned_project = project.clone()
         serializer = ProjectPolymorphicSerializer(cloned_project)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+
+class DiscrepancyAnalysisView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, project_id):
+        project = get_object_or_404(Project, id=project_id)
+        discrepancy_threshold = 70
+        examples = Example.objects.filter(project_id=project_id)
+
+        if not examples.exists():
+            raise NotFound("No examples found for this project.")
+
+        discrepancies = []
+        for example in examples:
+            labels = example.categories.values('label', 'label__text').annotate(count=Count('label'))
+            total_labels = sum(label['count'] for label in labels)
+
+            if total_labels > 0:
+                percentages = {label['label__text']: (label['count'] / total_labels) * 100 for label in labels}
+                max_percentage = max(percentages.values())
+
+                if max_percentage < discrepancy_threshold:
+                    discrepancies.append({
+                        "id": example.id,
+                        "text": example.text,
+                        "percentages": percentages,
+                    })
+
+        return Response({"discrepancies": discrepancies})
