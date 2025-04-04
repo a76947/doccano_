@@ -1,7 +1,7 @@
 <template>
   <v-card>
     <v-card-title>
-      {{ $t('compare_annotations') || 'Compare Annotations' }}
+      {{ $t('Compare Annotations') || 'Compare Annotations' }}
     </v-card-title>
     <v-card-text>
       <v-container>
@@ -12,7 +12,7 @@
               :items="documents"
               item-text="text"
               item-value="id"
-              :label="$t('select_document') || 'Select Document'"
+              :label="$t('Select Document') || 'Select Document'"
               required
             ></v-select>
           </v-col>
@@ -22,7 +22,7 @@
               :items="projectUsers"
               item-text="username"
               item-value="id"
-              :label="$t('first_user') || 'First User'"
+              :label="$t('First User') || 'First User'"
               required
             ></v-select>
           </v-col>
@@ -32,7 +32,7 @@
               :items="projectUsers"
               item-text="username"
               item-value="id"
-              :label="$t('second_user') || 'Second User'"
+              :label="$t('Second User') || 'Second User'"
               required
             ></v-select>
           </v-col>
@@ -41,14 +41,14 @@
     </v-card-text>
     <v-card-actions>
       <v-spacer></v-spacer>
-      <v-btn text @click="$emit('cancel')">{{ $t('cancel') || 'Cancel' }}</v-btn>
+      <v-btn text @click="$emit('cancel')">{{ $t('Cancel') || 'Cancel' }}</v-btn>
       <v-btn
         color="primary"
         text
         @click="compare"
         :disabled="!isValid"
       >
-        {{ $t('compare') || 'Compare' }}
+        {{ $t('Compare') || 'Compare' }}
       </v-btn>
     </v-card-actions>
   </v-card>
