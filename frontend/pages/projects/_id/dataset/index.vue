@@ -6,6 +6,7 @@
         @download="$router.push('dataset/export')"
         @assign="dialogAssignment = true"
         @reset="dialogReset = true"
+        @compare="dialogCompareForm = true"
       />
       <v-btn
         class="text-capitalize ms-2"
@@ -41,7 +42,17 @@
       <v-dialog v-model="dialogReset">
         <form-reset-assignment @cancel="dialogReset = false" @reset="resetAssignment" />
       </v-dialog>
+      <v-dialog v-model="dialogCompareForm" max-width="500">
+        <form-compare-annotations
+          :project-id="projectId"
+          :documents="item.items"
+          :project-users="projectUsers"
+          @cancel="dialogCompareForm = false"
+          @compare="openComparisonDialog"
+        />
+      </v-dialog>
     </v-card-title>
+    
     <image-list
       v-if="project.isImageProject"
       v-model="selected"
@@ -82,6 +93,35 @@
       @assign="assign"
       @unassign="unassign"
     />
+<v-dialog v-model="dialogCompare" max-width="90%" height="80vh" content-class="comparison-dialog">
+  <v-card class="comparison-card">
+    <v-toolbar dark color="primary" dense>
+      <v-btn icon @click="dialogCompare = false">
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+      <v-toolbar-title>Annotation Comparison</v-toolbar-title>
+      <v-spacer></v-spacer>
+      <v-chip small class="mr-2">
+        <v-avatar left>
+          <v-icon x-small>mdi-file-document</v-icon>
+        </v-avatar>
+        Document #{{ selectedDocumentId }}
+      </v-chip>
+    </v-toolbar>
+    
+    <!-- Comparison component -->
+    <comparison-view
+      v-if="dialogCompare"
+      :project-id="projectId"
+      :document-id="selectedDocumentId"
+      :user1-id="comparisonUsers.user1"
+      :user2-id="comparisonUsers.user2"
+      :labels="project && project.labels ? project.labels : []"
+      :users="projectUsers || []"
+      @close="dialogCompare = false"
+    />
+  </v-card>
+</v-dialog>
   </v-card>
 </template>
 
@@ -101,6 +141,8 @@ import ImageList from '~/components/example/ImageList.vue'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 import { ExampleDTO, ExampleListDTO } from '~/services/application/example/exampleData'
 import { MemberItem } from '~/domain/models/member/member'
+import ComparisonView from '~/components/annotations/ComparisonView.vue'
+import FormCompareAnnotations from '~/components/example/FormCompareAnnotations.vue'
 
 export default Vue.extend({
   components: {
@@ -111,7 +153,9 @@ export default Vue.extend({
     FormAssignment,
     FormDelete,
     FormDeleteBulk,
-    FormResetAssignment
+    FormResetAssignment,
+    FormCompareAnnotations, // Add this line
+    ComparisonView
   },
 
   layout: 'project',
@@ -128,12 +172,20 @@ export default Vue.extend({
       dialogDeleteAll: false,
       dialogAssignment: false,
       dialogReset: false,
+      dialogCompare: false,
+      dialogCompareForm: false,
       item: {} as ExampleListDTO,
       selected: [] as ExampleDTO[],
       members: [] as MemberItem[],
       user: {} as MemberItem,
       isLoading: false,
-      isProjectAdmin: false
+      isProjectAdmin: false,
+      selectedDocumentId: null,
+      comparisonUsers: {
+        user1: null,
+        user2: null
+      },
+      projectUsers: []
     }
   },
 
@@ -177,6 +229,8 @@ export default Vue.extend({
   async created() {
     const member = await this.$repositories.member.fetchMyRole(this.projectId)
     this.isProjectAdmin = member.isProjectAdmin
+    // Change this line
+    this.projectUsers = await this.$repositories.member.list(this.projectId)
   },
 
   methods: {
@@ -229,13 +283,58 @@ export default Vue.extend({
       this.dialogReset = false
       await this.$repositories.assignment.reset(this.projectId)
       this.item = await this.$services.example.list(this.projectId, this.$route.query)
+    },
+
+    openComparisonDialog({ documentId, user1, user2 }) {
+      console.log('Opening comparison dialog with:', { documentId, user1, user2 });
+      
+      // Force load projectUsers if not already loaded
+      if (!this.projectUsers || this.projectUsers.length === 0) {
+        this.$repositories.member.list(this.projectId).then(users => {
+          console.log('Loaded project users:', users.length);
+          this.projectUsers = users;
+        });
+      }
+      
+      // Make sure project and labels are loaded
+      if (!this.project || !this.project.labels) {
+        console.warn('Project or labels not loaded!');
+      }
+      
+      this.selectedDocumentId = documentId;
+      this.comparisonUsers = { user1, user2 };
+      this.dialogCompare = true;
     }
   }
 })
 </script>
 
 <style scoped>
-::v-deep .v-dialog {
+/* Style for the comparison dialog */
+::v-deep .comparison-dialog {
+  margin: 24px;
+  height: calc(100vh - 48px) !important;
+  max-height: calc(100vh - 48px) !important;
+  display: flex;
+  justify-content: center;
+}
+
+::v-deep .comparison-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Add a subtle shadow to make it feel like a floating card */
+::v-deep .v-card.comparison-card {
+  box-shadow: 0 8px 36px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Keep your existing styles for non-fullscreen dialogs */
+::v-deep .v-dialog:not(.v-dialog--fullscreen) {
   width: 800px;
 }
 </style>
