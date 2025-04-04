@@ -58,7 +58,7 @@
             {{ user1Annotations.length }} annotations
           </div>
         </div>
-        <div class="document-content pa-4">
+        <div class="document-content" ref="user1Content" @scroll="syncScroll(1, $event)">
           <div class="document-text">
             <template v-if="documentText">
               <span
@@ -91,7 +91,7 @@
             {{ user2Annotations.length }} annotations
           </div>
         </div>
-        <div class="document-content pa-4">
+        <div class="document-content" ref="user2Content" @scroll="syncScroll(2, $event)">
           <div class="document-text">
             <template v-if="documentText">
               <span
@@ -223,7 +223,8 @@ export default Vue.extend({
         { id: 1, text: "Good", backgroundColor: "#4CAF50" },
         { id: 2, text: "Bad", backgroundColor: "#F44336" },
         { id: 3, text: "MEh", backgroundColor: "#FFC107" }
-      ]
+      ],
+      isScrollingSynced: false,
     }
   },
 
@@ -322,123 +323,182 @@ export default Vue.extend({
       return segments;
     },
 
-    // Add specific segments for user 1
-    user1Segments() {
+    
+
+    baseSegments() {
       if (!this.documentText) return [];
       
-      // Build segments for User 1
+      // Create common segments based on all annotations
+      const allAnnotations = [
+        ...this.user1Annotations.map(a => ({ 
+          position: a.start_offset, 
+          isStart: true, 
+          user: 1,
+          annotation: a 
+        })),
+        ...this.user1Annotations.map(a => ({ 
+          position: a.end_offset, 
+          isStart: false, 
+          user: 1,
+          annotation: a 
+        })),
+        ...this.user2Annotations.map(a => ({ 
+          position: a.start_offset, 
+          isStart: true, 
+          user: 2,
+          annotation: a 
+        })),
+        ...this.user2Annotations.map(a => ({ 
+          position: a.end_offset, 
+          isStart: false, 
+          user: 2,
+          annotation: a 
+        }))
+      ];
+      
+      // Sort by position
+      allAnnotations.sort((a, b) => {
+        if (a.position !== b.position) return a.position - b.position;
+        // If positions are the same, ends come before starts
+        return a.isStart ? 1 : -1;
+      });
+      
+      // Create segments
       const segments = [];
-      let lastEnd = 0;
+      let lastPos = 0;
       
-      // Sort annotations by start position
-      const sortedAnnotations = [...this.user1Annotations].sort((a, b) => 
-        a.start_offset - b.start_offset
-      );
-      
-      for (const ann of sortedAnnotations) {
-        // Add non-highlighted text before this annotation
-        if (ann.start_offset > lastEnd) {
+      for (const point of allAnnotations) {
+        if (point.position > lastPos) {
           segments.push({
-            text: this.documentText.substring(lastEnd, ann.start_offset),
-            classes: '',
-            style: {},
-            title: ''
+            start: lastPos,
+            end: point.position,
+            text: this.documentText.substring(lastPos, point.position),
+            annotations: [] // No annotations for this segment
           });
         }
-        
-        // Check if this annotation matches one from user 2
-        const isMatch = this.user2Annotations.some(a => 
-          a.start_offset === ann.start_offset && 
-          a.end_offset === ann.end_offset && 
-          a.label === ann.label
-        );
-        
-        // Add the highlighted text
-        segments.push({
-          text: this.documentText.substring(ann.start_offset, ann.end_offset),
-          classes: isMatch ? 'highlight-match' : 'highlight-user1',
-          style: {
-            backgroundColor: isMatch ? '#c8e6c9' : '#ffecb3',
-            borderBottom: `2px solid ${this.getColorForLabel(ann.label)}`,
-            padding: '0 2px',
-          },
-          title: `${this.getLabelText(ann.label)} - ${isMatch ? 'Matches with ' + this.getSafeUserName(this.user2Id) : 'Only by ' + this.getSafeUserName(this.user1Id)}`
-        });
-        
-        lastEnd = Math.max(lastEnd, ann.end_offset);
+        lastPos = point.position;
       }
       
-      // Add remaining text
-      if (lastEnd < this.documentText.length) {
+      // Add remaining text if any
+      if (lastPos < this.documentText.length) {
         segments.push({
-          text: this.documentText.substring(lastEnd),
-          classes: '',
-          style: {},
-          title: ''
+          start: lastPos,
+          end: this.documentText.length,
+          text: this.documentText.substring(lastPos),
+          annotations: []
         });
       }
       
       return segments;
     },
     
-    // User 2 segments
-    user2Segments() {
-      if (!this.documentText) return [];
-      
-      // Build segments for User 2
-      const segments = [];
-      let lastEnd = 0;
-      
-      // Sort annotations by start position
-      const sortedAnnotations = [...this.user2Annotations].sort((a, b) => 
-        a.start_offset - b.start_offset
-      );
-      
-      for (const ann of sortedAnnotations) {
-        // Add non-highlighted text before this annotation
-        if (ann.start_offset > lastEnd) {
-          segments.push({
-            text: this.documentText.substring(lastEnd, ann.start_offset),
+    // User 1 segments - now using the common base segments
+    user1Segments() {
+      return this.baseSegments.map(segment => {
+        // Find annotations that cover this segment for user 1
+        const activeAnnotations = this.user1Annotations.filter(ann => 
+          ann.start_offset <= segment.start && ann.end_offset >= segment.end
+        );
+        
+        if (activeAnnotations.length > 0) {
+          // Find if any of these annotations match with user 2
+          const matchingAnn = activeAnnotations.find(ann => 
+            this.user2Annotations.some(a => 
+              a.start_offset === ann.start_offset && 
+              a.end_offset === ann.end_offset && 
+              a.label === ann.label
+            )
+          );
+          
+          if (matchingAnn) {
+            return {
+              text: segment.text,
+              classes: 'highlight-match',
+              style: {
+                backgroundColor: '#c8e6c9',
+                borderBottom: `2px solid ${this.getColorForLabel(matchingAnn.label)}`,
+                padding: '0 2px',
+              },
+              title: `${this.getLabelText(matchingAnn.label)} - Matches with ${this.getSafeUserName(this.user2Id)}`
+            };
+          } else {
+            // User 1 only annotation
+            return {
+              text: segment.text,
+              classes: 'highlight-user1',
+              style: {
+                backgroundColor: '#ffecb3',
+                borderBottom: `2px solid ${this.getColorForLabel(activeAnnotations[0].label)}`,
+                padding: '0 2px',
+              },
+              title: `${this.getLabelText(activeAnnotations[0].label)} - Only by ${this.getSafeUserName(this.user1Id)}`
+            };
+          }
+        } else {
+          // No annotation for this segment
+          return {
+            text: segment.text,
             classes: '',
             style: {},
             title: ''
-          });
+          };
         }
-        
-        // Check if this annotation matches one from user 1
-        const isMatch = this.user1Annotations.some(a => 
-          a.start_offset === ann.start_offset && 
-          a.end_offset === ann.end_offset && 
-          a.label === ann.label
+      });
+    },
+    
+    // User 2 segments - now using the common base segments
+    user2Segments() {
+      return this.baseSegments.map(segment => {
+        // Find annotations that cover this segment for user 2
+        const activeAnnotations = this.user2Annotations.filter(ann => 
+          ann.start_offset <= segment.start && ann.end_offset >= segment.end
         );
         
-        // Add the highlighted text
-        segments.push({
-          text: this.documentText.substring(ann.start_offset, ann.end_offset),
-          classes: isMatch ? 'highlight-match' : 'highlight-user2',
-          style: {
-            backgroundColor: isMatch ? '#c8e6c9' : '#bbdefb',
-            borderBottom: `2px solid ${this.getColorForLabel(ann.label)}`,
-            padding: '0 2px',
-          },
-          title: `${this.getLabelText(ann.label)} - ${isMatch ? 'Matches with ' + this.getSafeUserName(this.user1Id) : 'Only by ' + this.getSafeUserName(this.user2Id)}`
-        });
-        
-        lastEnd = Math.max(lastEnd, ann.end_offset);
-      }
-      
-      // Add remaining text
-      if (lastEnd < this.documentText.length) {
-        segments.push({
-          text: this.documentText.substring(lastEnd),
-          classes: '',
-          style: {},
-          title: ''
-        });
-      }
-      
-      return segments;
-    }
+        if (activeAnnotations.length > 0) {
+          // Find if any of these annotations match with user 1
+          const matchingAnn = activeAnnotations.find(ann => 
+            this.user1Annotations.some(a => 
+              a.start_offset === ann.start_offset && 
+              a.end_offset === ann.end_offset && 
+              a.label === ann.label
+            )
+          );
+          
+          if (matchingAnn) {
+            return {
+              text: segment.text,
+              classes: 'highlight-match',
+              style: {
+                backgroundColor: '#c8e6c9',
+                borderBottom: `2px solid ${this.getColorForLabel(matchingAnn.label)}`,
+                padding: '0 2px',
+              },
+              title: `${this.getLabelText(matchingAnn.label)} - Matches with ${this.getSafeUserName(this.user1Id)}`
+            };
+          } else {
+            // User 2 only annotation
+            return {
+              text: segment.text,
+              classes: 'highlight-user2',
+              style: {
+                backgroundColor: '#bbdefb',
+                borderBottom: `2px solid ${this.getColorForLabel(activeAnnotations[0].label)}`,
+                padding: '0 2px',
+              },
+              title: `${this.getLabelText(activeAnnotations[0].label)} - Only by ${this.getSafeUserName(this.user2Id)}`
+            };
+          }
+        } else {
+          // No annotation for this segment
+          return {
+            text: segment.text,
+            classes: '',
+            style: {},
+            title: ''
+          };
+        }
+      });
+    },
   },
 
   mounted() {
@@ -536,30 +596,52 @@ export default Vue.extend({
             this.user2Id
           );
           
-          // Check if we got annotations
-          if (annotationData.user1.length > 0 || annotationData.user2.length > 0) {
-            this.user1Annotations = annotationData.user1;
-            this.user2Annotations = annotationData.user2;
-            this.apiLoaded = true;
-            
-            // If we're showing different users than requested, update debug info
-if (annotationData.user1.length > 0 && annotationData.user1[0].user !== parseInt(this.user1Id)) {
-              this.errorMessage = `Showing annotations from users 1 and 38 instead of ${this.user1Id} and ${this.user2Id}`;
-            }
-          } else {
-            // Fall back to test data if we got nothing
-            this.useTestData();
+          // Check if we have annotations from both users
+          if (!annotationData.user1.length && !annotationData.user2.length) {
+            // Both users have no annotations, emit an event to notify parent
+            this.$emit('no-annotations', {
+              message: 'No annotations found for either user on this document.'
+            });
+            return; // Exit the method early
+          } else if (!annotationData.user1.length) {
+            // User 1 has no annotations
+            this.$emit('no-annotations', {
+              message: `No annotations found for ${this.getSafeUserName(this.user1Id)} on this document.`
+            });
+            return; // Exit the method early
+          } else if (!annotationData.user2.length) {
+            // User 2 has no annotations
+            this.$emit('no-annotations', {
+              message: `No annotations found for ${this.getSafeUserName(this.user2Id)} on this document.`
+            });
+            return; // Exit the method early
+          }
+          
+          // If we got here, both users have annotations
+          this.user1Annotations = annotationData.user1;
+          this.user2Annotations = annotationData.user2;
+          this.apiLoaded = true;
+          
+          // If we're showing different users than requested, update debug info
+          if (annotationData.user1.length > 0 
+          && annotationData.user1[0].user !== parseInt(this.user1Id)) {
+            this.errorMessage = `Showing annotations from users 1 and 38 instead of ${this.user1Id} and ${this.user2Id}`;
           }
         } catch (error) {
           console.error('Error fetching annotations:', error);
-          this.useTestData();
+          this.$emit('no-annotations', {
+            message: `Error loading annotations: ${error.message}`
+          });
+          return; // Exit the method early instead of using test data
         }
         
         // Calculate metrics
         this.calculateAgreementMetrics();
       } catch (error) {
         console.error('Error:', error);
-        this.useTestData();
+        this.$emit('no-annotations', {
+          message: `Error loading document: ${error.message}`
+        });
       } finally {
         this.loading = false;
       }
@@ -694,7 +776,7 @@ if (annotationData.user1.length > 0 && annotationData.user1[0].user !== parseInt
 
     getSafeUserName(userId) {
       // First try to get from the users prop if available
-      if (this.users && Array.isArray(this.users)) {
+      if (this.users && Array.isArray(this.users) && this.users.length > 0) {
         const user = this.users.find(u => u.id === parseInt(userId) || u.id === userId);
         if (user && user.username) {
           return user.username;
@@ -704,6 +786,26 @@ if (annotationData.user1.length > 0 && annotationData.user1[0].user !== parseInt
       // Otherwise just return User + ID
       return `User ${userId}`;
     },
+
+    syncScroll(source, event) {
+      // Prevent infinite scroll loop
+      if (this.isScrollingSynced) return;
+      
+      this.isScrollingSynced = true;
+      
+      // Sync the other panel
+      const sourceElement = event.target;
+      const targetElement = source === 1 
+        ? this.$refs.user2Content 
+        : this.$refs.user1Content;
+      
+      targetElement.scrollTop = sourceElement.scrollTop;
+      
+      // Reset the flag after a short delay
+      setTimeout(() => {
+        this.isScrollingSynced = false;
+      }, 50);
+    }
   }
 })
 </script>
@@ -728,6 +830,7 @@ if (annotationData.user1.length > 0 && annotationData.user1[0].user !== parseInt
   display: flex;
   flex: 1;
   overflow: hidden;
+  align-items: stretch; /* Make sure both sides stretch fully */
 }
 
 .document-panel {
@@ -736,6 +839,9 @@ if (annotationData.user1.length > 0 && annotationData.user1[0].user !== parseInt
   flex-direction: column;
   overflow: hidden;
   border-right: 1px solid #e0e0e0;
+  width: 50%; /* Ensure equal width */
+  min-width: 0; /* Allow flex container to shrink properly */
+  box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .document-panel:last-child {
@@ -752,14 +858,21 @@ if (annotationData.user1.length > 0 && annotationData.user1[0].user !== parseInt
 .document-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden; /* Hide horizontal scrollbar */
+  position: relative;
+  height: 100%;
+  padding: 16px; /* Ensure consistent padding */
 }
 
 .document-text {
   font-family: 'Roboto Mono', monospace;
   line-height: 1.7;
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre-wrap; /* Allow text to wrap */
   font-size: 0.9rem;
+  padding-bottom: 12px; /* Add padding for the scrollbar */
+  word-break: break-word; /* Break long words if needed */
+  width: 100%; /* Use full width */
+  display: inline-block; /* Important for consistent rendering */
 }
 
 .agreement-stats-bar {

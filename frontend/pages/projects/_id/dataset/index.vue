@@ -119,9 +119,28 @@
       :labels="project && project.labels ? project.labels : []"
       :users="projectUsers || []"
       @close="dialogCompare = false"
+      @no-annotations="handleNoAnnotations"
     />
   </v-card>
 </v-dialog>
+
+<!-- Add this for showing no annotations message -->
+<v-snackbar
+  v-model="noAnnotationsSnackbar"
+  :timeout="5000"
+  color="warning"
+>
+  {{ noAnnotationsMessage }}
+  <template v-slot:action="{ attrs }">
+    <v-btn
+      text
+      v-bind="attrs"
+      @click="noAnnotationsSnackbar = false"
+    >
+      Close
+    </v-btn>
+  </template>
+</v-snackbar>
   </v-card>
 </template>
 
@@ -185,7 +204,9 @@ export default Vue.extend({
         user1: null,
         user2: null
       },
-      projectUsers: []
+      projectUsers: [],
+      noAnnotationsSnackbar: false,
+      noAnnotationsMessage: '',
     }
   },
 
@@ -193,9 +214,20 @@ export default Vue.extend({
     this.isLoading = true
     this.item = await this.$services.example.list(this.projectId, this.$route.query)
     this.user = await this.$repositories.member.fetchMyRole(this.projectId)
+    
+    // Only load members if user is admin
     if (this.user.isProjectAdmin) {
-      this.members = await this.$repositories.member.list(this.projectId)
+      try {
+        this.members = await this.$repositories.member.list(this.projectId)
+      } catch (error) {
+        console.warn('Could not load project members:', error)
+        this.members = []
+      }
+    } else {
+      // For regular users, only include themselves
+      this.members = [this.user]
     }
+    
     this.isLoading = false
   },
 
@@ -229,8 +261,19 @@ export default Vue.extend({
   async created() {
     const member = await this.$repositories.member.fetchMyRole(this.projectId)
     this.isProjectAdmin = member.isProjectAdmin
-    // Change this line
-    this.projectUsers = await this.$repositories.member.list(this.projectId)
+    
+    // Only load project members if user is an admin
+    if (this.isProjectAdmin) {
+      try {
+        this.projectUsers = await this.$repositories.member.list(this.projectId)
+      } catch (error) {
+        console.warn('Could not load project members:', error)
+        this.projectUsers = []
+      }
+    } else {
+      // For regular users, only include themselves
+      this.projectUsers = [member]
+    }
   },
 
   methods: {
@@ -285,25 +328,90 @@ export default Vue.extend({
       this.item = await this.$services.example.list(this.projectId, this.$route.query)
     },
 
-    openComparisonDialog({ documentId, user1, user2 }) {
+    async openComparisonDialog({ documentId, user1, user2 }) {
       console.log('Opening comparison dialog with:', { documentId, user1, user2 });
       
-      // Force load projectUsers if not already loaded
-      if (!this.projectUsers || this.projectUsers.length === 0) {
-        this.$repositories.member.list(this.projectId).then(users => {
-          console.log('Loaded project users:', users.length);
-          this.projectUsers = users;
+      try {
+        // Get document text first to make sure document exists
+        await this.$services.example.findById(this.projectId, documentId);
+        
+        // Check if annotations exist
+        let annotationData;
+        try {
+          annotationData = await this.$repositories.annotation.getComparisonData(
+            this.projectId,
+            documentId,
+            user1,
+            user2
+          );
+        } catch (error) {
+          console.error('Error fetching annotations:', error);
+          this.handleNoAnnotations({
+            message: `Error loading annotations: ${error.message}`
+          });
+          return;
+        }
+        
+        // Verify annotations exist for both users
+        if (!annotationData.user1.length && !annotationData.user2.length) {
+          this.handleNoAnnotations({
+            message: 'No annotations found for either user on this document.'
+          });
+          return;
+        } else if (!annotationData.user1.length) {
+          this.handleNoAnnotations({
+            message: `No annotations found for User ${user1} on this document.`
+          });
+          return;
+        } else if (!annotationData.user2.length) {
+          this.handleNoAnnotations({
+            message: `No annotations found for User ${user2} on this document.`
+          });
+          return;
+        }
+        
+        // If we get here, both users have annotations, so show the dialog
+        this.selectedDocumentId = documentId;
+        this.comparisonUsers = { user1, user2 };
+        
+        // Only try to get members if admin
+        if (this.isProjectAdmin && (!this.projectUsers || this.projectUsers.length === 0)) {
+          try {
+            this.projectUsers = await this.$repositories.member.list(this.projectId);
+            console.log('Loaded project users:', this.projectUsers.length);
+          } catch (error) {
+            console.warn('Could not load project users:', error);
+            // Continue without user details
+            this.projectUsers = [];
+          }
+        }
+        
+        this.dialogCompare = true;
+        
+      } catch (error) {
+        console.error('Error checking document:', error);
+        this.handleNoAnnotations({
+          message: `Error loading document: ${error.message}`
         });
       }
-      
-      // Make sure project and labels are loaded
-      if (!this.project || !this.project.labels) {
-        console.warn('Project or labels not loaded!');
+    },
+
+    // Helper method to get user name
+    getUserName(userId) {
+      // Find user in projectUsers
+      if (this.projectUsers && Array.isArray(this.projectUsers)) {
+        const user = this.projectUsers.find(u => u.id === parseInt(userId) || u.id === userId);
+        if (user && user.username) {
+          return user.username;
+        }
       }
-      
-      this.selectedDocumentId = documentId;
-      this.comparisonUsers = { user1, user2 };
-      this.dialogCompare = true;
+      return `User ${userId}`;
+    },
+
+    handleNoAnnotations({ message }) {
+      this.noAnnotationsMessage = message;
+      this.noAnnotationsSnackbar = true;
+      this.dialogCompare = false; // Close the comparison dialog
     }
   }
 })
