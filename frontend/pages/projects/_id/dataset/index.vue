@@ -360,12 +360,12 @@ export default Vue.extend({
           return;
         } else if (!annotationData.user1.length) {
           this.handleNoAnnotations({
-            message: `No annotations found for User ${user1} on this document.`
+            message: `No annotations found for First User on this document.`
           });
           return;
         } else if (!annotationData.user2.length) {
           this.handleNoAnnotations({
-            message: `No annotations found for User ${user2} on this document.`
+            message: `No annotations found for Second User on this document.`
           });
           return;
         }
@@ -391,7 +391,7 @@ export default Vue.extend({
       } catch (error) {
         console.error('Error checking document:', error);
         this.handleNoAnnotations({
-          message: `Error loading document: ${error.message}`
+          message: `Couldnt connect to the database, try again later.`
         });
       }
     },

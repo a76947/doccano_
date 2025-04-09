@@ -640,7 +640,7 @@ export default Vue.extend({
       } catch (error) {
         console.error('Error:', error);
         this.$emit('no-annotations', {
-          message: `Error loading document: ${error.message}`
+          message: `Couldnt connect to the database, try again later.`
         });
       } finally {
         this.loading = false;
