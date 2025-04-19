@@ -24,6 +24,7 @@ export const mutations = {
 }
 
 export const getters = {
+  // já existentes...
   isAuthenticated(state) {
     return state.isAuthenticated
   },
@@ -35,6 +36,14 @@ export const getters = {
   },
   isStaff(state) {
     return state.isStaff
+  },
+
+  // novo getter:
+  currentUser(state) {
+    return {
+      id: state.id,
+      username: state.username
+    }
   }
 }
 
@@ -68,4 +77,4 @@ export const actions = {
     commit('setIsStaff', false)
     commit('clearUsername')
   }
-}
+} 

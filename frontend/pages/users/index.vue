@@ -21,14 +21,35 @@
           class="text-capitalize ms-2"
           :disabled="!canDelete"
           outlined
-          @click.stop="dialogDelete = true"
+          @click.stop="onDeleteClick"
         >
           {{ $t('generic.delete') }}
         </v-btn>
         <v-dialog v-model="dialogDelete" width="400">
-          <form-delete :selected="selected" @cancel="dialogDelete = false" @remove="remove" />
+          <form-delete
+            :selected="selected"
+            :current-user="currentUser"
+            :has-projects="hasSelectedUserWithProjects"
+            @cancel="dialogDelete = false"
+            @remove="remove"
+          />
         </v-dialog>
       </v-card-title>
+
+      <!-- ✅ Mensagem de erro com transição fade -->
+      <transition name="fade">
+        <v-alert
+          v-if="errorMessage"
+          type="error"
+          class="ma-4"
+          elevation="2"
+          style="background-color: #fdecea; color: #b71c1c; border-left: 4px solid #b71c1c;"
+          dense
+        >
+          <v-icon left color="error">mdi-alert-circle</v-icon>
+          {{ errorMessage }}
+        </v-alert>
+      </transition>
 
       <!-- ✅ Mensagem de sucesso com transição fade -->
       <transition name="fade">
@@ -77,7 +98,9 @@ export default Vue.extend({
       selected: [] as UserItem[],
       isLoading: false,
       successMessage: '',
-      showSnackbar: false
+      errorMessage: '',
+      showSnackbar: false,
+      usersWithProjects: [] as number[]
     }
   },
 
@@ -87,8 +110,10 @@ export default Vue.extend({
       this.users = await this.$services.user.list(
         this.$route.query as unknown as SearchQueryData
       )
+      const ids = await this.$services.project.getUsersWithProjects()
+      this.usersWithProjects = ids
     } catch (e) {
-      console.error('Erro ao carregar usuários:', e)
+      console.error('Erro ao carregar usuários ou projetos:', e)
     } finally {
       this.isLoading = false
     }
@@ -96,11 +121,19 @@ export default Vue.extend({
 
   computed: {
     ...mapGetters('auth', ['isStaff']),
-    canDelete(): boolean {
+    currentUser() {
+      const id = this.$store.getters['auth/getUserId']
+      const username = this.$store.getters['auth/getUsername']
+      return { id, username }
+    },
+    canDelete() {
       return this.selected.length > 0
     },
-    canEdit(): boolean {
+    canEdit() {
       return this.selected.length === 1
+    },
+    hasSelectedUserWithProjects() {
+      return this.selected.some(user => this.usersWithProjects.includes(user.id))
     }
   },
 
@@ -118,29 +151,70 @@ export default Vue.extend({
 
     onSelectionChange(selectedItems: UserItem[]) {
       this.selected = selectedItems
-      console.log('Usuários selecionados:', this.selected)
+    },
+
+    onDeleteClick() {
+      const currentUserId = this.currentUser?.id
+
+      const hasOwnUser = this.selected.some(user => user.id === currentUserId)
+      const hasProjects = this.selected.some(user => this.usersWithProjects.includes(user.id))
+
+      this.errorMessage = ''
+
+      if (hasOwnUser) {
+        this.errorMessage = this.$t('UserOverview.overview.deleteCurrentUser') as string
+        setTimeout(() => (this.errorMessage = ''), 3000)
+        return
+      }
+
+      if (hasProjects) {
+        this.errorMessage = this.$t('UserOverview.overview.deleteUserWithProjects') as string
+        setTimeout(() => (this.errorMessage = ''), 3000)
+        return
+      }
+
+      this.dialogDelete = true
     },
 
     async remove() {
-      console.log('Removendo:', this.selected)
       try {
-        const isSingle = this.selected.length === 1
+        const currentUser = this.currentUser
 
-        for (const user of this.selected) {
-          await this.$services.user.delete(user.id)
+        if (!currentUser) {
+          console.error('🚨 currentUser ainda está undefined!')
+          return
+        }
+
+        const usersToDelete = this.selected.filter(user => user.id !== currentUser.id)
+
+        if (usersToDelete.length === 0) {
+          console.warn('Tentativa de apagar o próprio utilizador foi evitada.')
+          this.dialogDelete = false
+          return
+        }
+
+        for (const user of usersToDelete) {
+          try {
+            await this.$services.user.delete(user.id)
+          } catch (error) {
+            if (error && typeof error === 'object' && 'response' in error) {
+              this.errorMessage = (error as any).response.data?.detail || 'Erro ao eliminar utilizador.'
+            } else {
+              this.errorMessage = this.$t('UserOverview.overview.deleteUserError') as string
+            }
+            setTimeout(() => (this.errorMessage = ''), 3000)
+            return
+          }
         }
 
         this.successMessage = this.$t(
-          isSingle
+          usersToDelete.length === 1
             ? 'UserOverview.overview.deleteUserSuccessSingle'
             : 'UserOverview.overview.deleteUserSuccessMultiple'
         ) as string
 
         this.showSnackbar = true
-
-        setTimeout(() => {
-          this.showSnackbar = false
-        }, 3000)
+        setTimeout(() => (this.showSnackbar = false), 3000)
 
         await this.$fetch()
         this.selected = []

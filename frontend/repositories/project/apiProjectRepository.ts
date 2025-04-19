@@ -117,4 +117,10 @@ export class APIProjectRepository {
     const response = await this.request.post(url)
     return toModel(response.data)
   }
+
+  public async getUsersWithProjects(): Promise<number[]> {
+    const response = await this.request.get('/users/with-projects/')
+    return response.data
+  }
+  
 }
