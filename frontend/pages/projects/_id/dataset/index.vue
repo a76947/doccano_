@@ -90,8 +90,7 @@
       @update:query="updateQuery"
       @click:labeling="movePage"
       @edit="editItem"
-      @assign="assign"
-      @unassign="unassign"
+      @vote="openVotePage"
     />
 <v-dialog v-model="dialogCompare" max-width="90%" height="80vh" content-class="comparison-dialog">
   <v-card class="comparison-card">
@@ -412,6 +411,10 @@ export default Vue.extend({
       this.noAnnotationsMessage = message;
       this.noAnnotationsSnackbar = true;
       this.dialogCompare = false; // Close the comparison dialog
+    },
+
+    openVotePage(_item) {
+      this.$router.push(`/projects/${this.projectId}/votacoes`);
     }
   }
 })
