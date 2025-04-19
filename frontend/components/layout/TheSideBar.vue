@@ -137,6 +137,12 @@ export default {
           text: this.$t('settings.title'),
           link: 'settings',
           isVisible: this.isProjectAdmin
+        },
+        {
+          icon: mdiChartBar,
+          text: 'Votações',
+          link: 'votacoes',
+          isVisible: true
         }
       ]
       return items.filter((item) => item.isVisible)
