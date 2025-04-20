@@ -131,6 +131,12 @@ export default {
           link: 'perspectives',
           isVisible: !this.isProjectAdmin// modificar
         },
+        {
+          icon: mdiDatabase,
+          text: 'Discrepancies',
+          link: 'discrepancies',
+          isVisible: this.isProjectAdmin
+        },
 
         {
           icon: mdiCog,
