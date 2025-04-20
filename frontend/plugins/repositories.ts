@@ -28,7 +28,10 @@ import { APIUserRepository } from '@/repositories/user/apiUserRepository'
 import { APISegmentationRepository } from '~/repositories/tasks/apiSegmentationRepository'
 
 // IMPORTA O TEU NOVO REPOSITÓRIO
-import { useApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
+import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
+import { APIAnnotationRepository } from '@/repositories/annotation/apiAnnotationRepository'
+import { ApiDiscrepancieRepository } from '~/repositories/discrepancies/apiDiscrepancieRepository'
+
 
 export interface Repositories {
   // User
@@ -75,7 +78,13 @@ export interface Repositories {
   segmentation: APISegmentationRepository
 
   // Perspective
-  perspective: typeof useApiPerspectiveRepository
+  perspective: ApiPerspectiveRepository
+
+  // Discrepancies
+  discrepancy: ApiDiscrepancieRepository // Add this line
+
+  // Annotation
+  annotation: APIAnnotationRepository
 }
 
 declare module 'vue/types/vue' {
@@ -128,8 +137,15 @@ const repositories: Repositories = {
   boundingBox: new APIBoundingBoxRepository(),
   segmentation: new APISegmentationRepository(),
 
+  // Discrepancies
+  discrepancy: new ApiDiscrepancieRepository(),
+
+
   // Perspective
-  perspective: useApiPerspectiveRepository
+  perspective: {} as ApiPerspectiveRepository, // Will be replaced in services.ts
+
+  // Annotation
+  annotation: new APIAnnotationRepository()
 }
 
 const plugin: Plugin = (_, inject) => {

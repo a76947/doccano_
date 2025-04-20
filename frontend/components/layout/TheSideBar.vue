@@ -126,10 +126,29 @@ export default {
         },
 
         {
+          icon: mdiDatabase,
+          text: 'Perspetivas',
+          link: 'perspectives',
+          isVisible: !this.isProjectAdmin// modificar
+        },
+        {
+          icon: mdiDatabase,
+          text: 'Discrepancies',
+          link: 'discrepancies',
+          isVisible: this.isProjectAdmin
+        },
+
+        {
           icon: mdiCog,
           text: this.$t('settings.title'),
           link: 'settings',
           isVisible: this.isProjectAdmin
+        },
+        {
+          icon: mdiChartBar,
+          text: 'Votações',
+          link: 'votacoes',
+          isVisible: true
         }
       ]
       return items.filter((item) => item.isVisible)

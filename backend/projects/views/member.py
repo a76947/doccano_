@@ -4,6 +4,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from projects.exceptions import RoleAlreadyAssignedException, RoleConstraintException
 from projects.models import Member
@@ -62,3 +63,30 @@ class MyRole(generics.RetrieveAPIView):
     def get_object(self):
         kwargs = {"user": self.request.user, "project_id": self.kwargs["project_id"]}
         return get_object_or_404(self.queryset, **kwargs)
+
+
+class MyProjectPermissions(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, project_id):
+        """Get the current user's permissions for a specific project"""
+        project = get_object_or_404(Project, pk=project_id)
+        
+        # Get the member object for this user in this project
+        member = project.members.filter(user=request.user).first()
+        
+        if not member:
+            return Response({"detail": "You are not a member of this project"}, 
+                           status=status.HTTP_403_FORBIDDEN)
+        
+        # Check the role
+        role = member.role
+        
+        # Return permissions based on role
+        return Response({
+            "isAdmin": role.name == settings.ROLE_PROJECT_ADMIN,
+            "role": role.name,
+            "canCreateQuestions": role.name == settings.ROLE_PROJECT_ADMIN,
+            "canDeleteQuestions": role.name == settings.ROLE_PROJECT_ADMIN,
+            "canAnswerQuestions": True  # Allow all project members to answer questions
+        })

@@ -6,6 +6,7 @@
         @download="$router.push('dataset/export')"
         @assign="dialogAssignment = true"
         @reset="dialogReset = true"
+        @compare="dialogCompareForm = true"
       />
       <v-btn
         class="text-capitalize ms-2"
@@ -41,7 +42,17 @@
       <v-dialog v-model="dialogReset">
         <form-reset-assignment @cancel="dialogReset = false" @reset="resetAssignment" />
       </v-dialog>
+      <v-dialog v-model="dialogCompareForm" max-width="500">
+        <form-compare-annotations
+          :project-id="projectId"
+          :documents="item.items"
+          :project-users="projectUsers"
+          @cancel="dialogCompareForm = false"
+          @compare="openComparisonDialog"
+        />
+      </v-dialog>
     </v-card-title>
+    
     <image-list
       v-if="project.isImageProject"
       v-model="selected"
@@ -79,9 +90,56 @@
       @update:query="updateQuery"
       @click:labeling="movePage"
       @edit="editItem"
-      @assign="assign"
-      @unassign="unassign"
+      @vote="openVotePage"
     />
+<v-dialog v-model="dialogCompare" max-width="90%" height="80vh" content-class="comparison-dialog">
+  <v-card class="comparison-card">
+    <v-toolbar dark color="primary" dense>
+      <v-btn icon @click="dialogCompare = false">
+        <v-icon>mdi-close</v-icon>
+      </v-btn>
+      <v-toolbar-title>Annotation Comparison</v-toolbar-title>
+      <v-spacer></v-spacer>
+      <v-chip small class="mr-2">
+        <v-avatar left>
+          <v-icon x-small>mdi-file-document</v-icon>
+        </v-avatar>
+        Document #{{ selectedDocumentId }}
+      </v-chip>
+    </v-toolbar>
+    
+    <!-- Comparison component -->
+    <comparison-view
+      v-if="dialogCompare"
+      :project-id="projectId"
+      :document-id="selectedDocumentId"
+      :user1-id="comparisonUsers.user1"
+      :user2-id="comparisonUsers.user2"
+      :labels="project && project.labels ? project.labels : []"
+      :users="projectUsers || []"
+      @close="dialogCompare = false"
+      @no-annotations="handleNoAnnotations"
+    />
+  </v-card>
+</v-dialog>
+
+<!-- Add this for showing no annotations message -->
+<v-snackbar
+  v-model="noAnnotationsSnackbar"
+  :timeout="5000"
+  color="warning"
+>
+  {{ noAnnotationsMessage }}
+  <template v-slot:action="{ attrs }">
+    <v-btn
+      text
+      v-bind="attrs"
+      @click="noAnnotationsSnackbar = false"
+    >
+      Close
+    </v-btn>
+  </template>
+</v-snackbar>
   </v-card>
 </template>
 
@@ -101,6 +159,8 @@ import ImageList from '~/components/example/ImageList.vue'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 import { ExampleDTO, ExampleListDTO } from '~/services/application/example/exampleData'
 import { MemberItem } from '~/domain/models/member/member'
+import ComparisonView from '~/components/annotations/ComparisonView.vue'
+import FormCompareAnnotations from '~/components/example/FormCompareAnnotations.vue'
 
 export default Vue.extend({
   components: {
@@ -111,7 +171,9 @@ export default Vue.extend({
     FormAssignment,
     FormDelete,
     FormDeleteBulk,
-    FormResetAssignment
+    FormResetAssignment,
+    FormCompareAnnotations, // Add this line
+    ComparisonView
   },
 
   layout: 'project',
@@ -128,12 +190,22 @@ export default Vue.extend({
       dialogDeleteAll: false,
       dialogAssignment: false,
       dialogReset: false,
+      dialogCompare: false,
+      dialogCompareForm: false,
       item: {} as ExampleListDTO,
       selected: [] as ExampleDTO[],
       members: [] as MemberItem[],
       user: {} as MemberItem,
       isLoading: false,
-      isProjectAdmin: false
+      isProjectAdmin: false,
+      selectedDocumentId: null,
+      comparisonUsers: {
+        user1: null,
+        user2: null
+      },
+      projectUsers: [],
+      noAnnotationsSnackbar: false,
+      noAnnotationsMessage: '',
     }
   },
 
@@ -141,9 +213,20 @@ export default Vue.extend({
     this.isLoading = true
     this.item = await this.$services.example.list(this.projectId, this.$route.query)
     this.user = await this.$repositories.member.fetchMyRole(this.projectId)
+    
+    // Only load members if user is admin
     if (this.user.isProjectAdmin) {
-      this.members = await this.$repositories.member.list(this.projectId)
+      try {
+        this.members = await this.$repositories.member.list(this.projectId)
+      } catch (error) {
+        console.warn('Could not load project members:', error)
+        this.members = []
+      }
+    } else {
+      // For regular users, only include themselves
+      this.members = [this.user]
     }
+    
     this.isLoading = false
   },
 
@@ -177,6 +260,19 @@ export default Vue.extend({
   async created() {
     const member = await this.$repositories.member.fetchMyRole(this.projectId)
     this.isProjectAdmin = member.isProjectAdmin
+    
+    // Only load project members if user is an admin
+    if (this.isProjectAdmin) {
+      try {
+        this.projectUsers = await this.$repositories.member.list(this.projectId)
+      } catch (error) {
+        console.warn('Could not load project members:', error)
+        this.projectUsers = []
+      }
+    } else {
+      // For regular users, only include themselves
+      this.projectUsers = [member]
+    }
   },
 
   methods: {
@@ -229,13 +325,127 @@ export default Vue.extend({
       this.dialogReset = false
       await this.$repositories.assignment.reset(this.projectId)
       this.item = await this.$services.example.list(this.projectId, this.$route.query)
+    },
+
+    async openComparisonDialog({ documentId, user1, user2 }) {
+      console.log('Opening comparison dialog with:', { documentId, user1, user2 });
+      
+      try {
+        // Get document text first to make sure document exists
+        await this.$services.example.findById(this.projectId, documentId);
+        
+        // Check if annotations exist
+        let annotationData;
+        try {
+          annotationData = await this.$repositories.annotation.getComparisonData(
+            this.projectId,
+            documentId,
+            user1,
+            user2
+          );
+        } catch (error) {
+          console.error('Error fetching annotations:', error);
+          this.handleNoAnnotations({
+            message: `Error loading annotations: ${error.message}`
+          });
+          return;
+        }
+        
+        // Verify annotations exist for both users
+        if (!annotationData.user1.length && !annotationData.user2.length) {
+          this.handleNoAnnotations({
+            message: 'No annotations found for either user on this document.'
+          });
+          return;
+        } else if (!annotationData.user1.length) {
+          this.handleNoAnnotations({
+            message: `No annotations found for First User on this document.`
+          });
+          return;
+        } else if (!annotationData.user2.length) {
+          this.handleNoAnnotations({
+            message: `No annotations found for Second User on this document.`
+          });
+          return;
+        }
+        
+        // If we get here, both users have annotations, so show the dialog
+        this.selectedDocumentId = documentId;
+        this.comparisonUsers = { user1, user2 };
+        
+        // Only try to get members if admin
+        if (this.isProjectAdmin && (!this.projectUsers || this.projectUsers.length === 0)) {
+          try {
+            this.projectUsers = await this.$repositories.member.list(this.projectId);
+            console.log('Loaded project users:', this.projectUsers.length);
+          } catch (error) {
+            console.warn('Could not load project users:', error);
+            // Continue without user details
+            this.projectUsers = [];
+          }
+        }
+        
+        this.dialogCompare = true;
+        
+      } catch (error) {
+        console.error('Error checking document:', error);
+        this.handleNoAnnotations({
+          message: `Couldnt connect to the database, try again later.`
+        });
+      }
+    },
+
+    // Helper method to get user name
+    getUserName(userId) {
+      // Find user in projectUsers
+      if (this.projectUsers && Array.isArray(this.projectUsers)) {
+        const user = this.projectUsers.find(u => u.id === parseInt(userId) || u.id === userId);
+        if (user && user.username) {
+          return user.username;
+        }
+      }
+      return `User ${userId}`;
+    },
+
+    handleNoAnnotations({ message }) {
+      this.noAnnotationsMessage = message;
+      this.noAnnotationsSnackbar = true;
+      this.dialogCompare = false; // Close the comparison dialog
+    },
+
+    openVotePage(_item) {
+      this.$router.push(`/projects/${this.projectId}/votacoes`);
     }
   }
 })
 </script>
 
 <style scoped>
-::v-deep .v-dialog {
+/* Style for the comparison dialog */
+::v-deep .comparison-dialog {
+  margin: 24px;
+  height: calc(100vh - 48px) !important;
+  max-height: calc(100vh - 48px) !important;
+  display: flex;
+  justify-content: center;
+}
+
+::v-deep .comparison-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Add a subtle shadow to make it feel like a floating card */
+::v-deep .v-card.comparison-card {
+  box-shadow: 0 8px 36px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Keep your existing styles for non-fullscreen dialogs */
+::v-deep .v-dialog:not(.v-dialog--fullscreen) {
   width: 800px;
 }
 </style>

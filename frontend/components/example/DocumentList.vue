@@ -67,11 +67,14 @@
       </v-combobox>
     </template>
     <template #[`item.action`]="{ item }">
-      <v-btn class="me-1" small color="primary text-capitalize" @click="$emit('edit', item)"
-        >Edit</v-btn
-      >
+      <v-btn class="me-1" small color="primary text-capitalize" @click="$emit('edit', item)">
+        Edit
+      </v-btn>
       <v-btn small color="primary text-capitalize" @click="toLabeling(item)">
         {{ $t('dataset.annotate') }}
+      </v-btn>
+      <v-btn small color="success text-capitalize" @click="$emit('vote', item)">
+        Votações
       </v-btn>
     </template>
   </v-data-table>

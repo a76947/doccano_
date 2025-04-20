@@ -7,12 +7,13 @@
     @download="$emit('download')"
     @assign="$emit('assign')"
     @reset="$emit('reset')"
+    @compare="$emit('compare')"
   />
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
-import { mdiAccountCheck, mdiUpload, mdiDownload, mdiUpdate } from '@mdi/js'
+import { mdiAccountCheck, mdiUpload, mdiDownload, mdiUpdate, mdiCompare } from '@mdi/js'
 import ActionMenu from '~/components/utils/ActionMenu.vue'
 
 export default Vue.extend({
@@ -42,6 +43,11 @@ export default Vue.extend({
           title: 'Reset Assignment',
           icon: mdiUpdate,
           event: 'reset'
+        },
+        {
+          title: 'Compare Annotations',
+          icon: mdiCompare,
+          event: 'compare'
         }
       ]
     }

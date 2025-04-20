@@ -11,7 +11,10 @@ from .models import (
     SequenceLabelingProject,
     Tag,
     TextClassificationProject,
-    )
+    PerspectiveGroup,
+    Perspective,
+    PerspectiveAnswer,
+)
 
 
 class MemberAdmin(admin.ModelAdmin):
@@ -52,4 +55,7 @@ admin.site.register(SegmentationProject, ProjectAdmin)
 admin.site.register(ImageCaptioningProject, ProjectAdmin)
 admin.site.register(ImageClassificationProject, ProjectAdmin)
 admin.site.register(Tag, TagAdmin)
+admin.site.register(PerspectiveGroup)
+admin.site.register(Perspective)
+admin.site.register(PerspectiveAnswer)
 
