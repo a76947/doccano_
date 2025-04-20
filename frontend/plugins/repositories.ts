@@ -30,6 +30,8 @@ import { APISegmentationRepository } from '~/repositories/tasks/apiSegmentationR
 // IMPORTA O TEU NOVO REPOSITÓRIO
 import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
 import { APIAnnotationRepository } from '@/repositories/annotation/apiAnnotationRepository'
+import { ApiDiscrepancieRepository } from '~/repositories/discrepancies/apiDiscrepancieRepository'
+
 
 export interface Repositories {
   // User
@@ -77,6 +79,9 @@ export interface Repositories {
 
   // Perspective
   perspective: ApiPerspectiveRepository
+
+  // Discrepancies
+  discrepancy: ApiDiscrepancieRepository // Add this line
 
   // Annotation
   annotation: APIAnnotationRepository
@@ -131,6 +136,10 @@ const repositories: Repositories = {
   textLabel: new APITextLabelRepository(),
   boundingBox: new APIBoundingBoxRepository(),
   segmentation: new APISegmentationRepository(),
+
+  // Discrepancies
+  discrepancy: new ApiDiscrepancieRepository(),
+
 
   // Perspective
   perspective: {} as ApiPerspectiveRepository, // Will be replaced in services.ts

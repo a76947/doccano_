@@ -12,6 +12,9 @@ import { UserApplicationService } from '~/services/application/user/userAplicati
 import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
 import { PerspectiveApplicationService } from '@/services/application/perspective/perspectiveApplicationService'
 import { AnnotationApplicationService } from '@/services/application/annotation/annotationApplicationService'
+import { DiscrepacieApplicationService } from '@/services/application/descrepancys/discrepanciesApplicationService'
+
+
 
 export interface Services {
   categoryType: LabelApplicationService
@@ -27,6 +30,8 @@ export interface Services {
   segmentation: SegmentationApplicationService
   perspective: PerspectiveApplicationService
   annotation: AnnotationApplicationService
+  discrepancy: DiscrepacieApplicationService
+
 }
 
 declare module 'vue/types/vue' {
@@ -54,7 +59,9 @@ const plugin: Plugin = (_, inject) => {
     segmentation: new SegmentationApplicationService(repositories.segmentation),
     user: new UserApplicationService(repositories.user),
     perspective: new PerspectiveApplicationService(repositories.perspective),
-    annotation: new AnnotationApplicationService(repositories.annotation)
+    annotation: new AnnotationApplicationService(repositories.annotation),
+    discrepancy: new DiscrepacieApplicationService(repositories.discrepancy) // Add this line
+
   }
   inject('services', services)
 }
