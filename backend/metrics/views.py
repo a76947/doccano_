@@ -1,5 +1,6 @@
 import abc
 
+from django.db.models import Count
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -64,3 +65,149 @@ class SpanTypeDistribution(LabelDistribution):
 class RelationTypeDistribution(LabelDistribution):
     model = Relation
     label_type = RelationType
+
+
+class DatasetStatisticsAPI(APIView):
+    permission_classes = [IsAuthenticated & IsProjectAdmin]
+
+    def get(self, request, project_id):
+        # Log all incoming parameters
+        print(f"Request parameters: {request.query_params}")
+        
+        # Get request parameters with defaults
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 20))
+        status_filter = request.query_params.get('status')
+        annotation_filter = request.query_params.get('annotation_type')
+        ordering = request.query_params.get('ordering', '-updated_at')  # Default sort by updated_at desc
+        
+        # Field name mapping from frontend to database
+        field_mapping = {
+            'updatedAt': 'updated_at',
+            'id': 'id',
+            'text': 'text',  # Add text as a sortable field
+            'status': None,  # Special handling for status
+            'categoryCount': None,  # Special handling for counts
+            'spanCount': None,
+            'relationCount': None
+        }
+        
+        # Basic query
+        query = Example.objects.filter(project_id=project_id)
+        
+        # Get the total count before applying filters
+        total = query.count()
+        
+        # Apply filters if provided
+        filtered_query = query
+        if status_filter:
+            if status_filter == 'annotated':
+                filtered_query = filtered_query.filter(states__isnull=False).distinct()
+            elif status_filter == 'pending':
+                filtered_query = filtered_query.filter(states__isnull=True)
+        
+        if annotation_filter:
+            if annotation_filter == 'hasCategories':
+                filtered_query = filtered_query.filter(categories__isnull=False).distinct()
+            elif annotation_filter == 'hasSpans':
+                filtered_query = filtered_query.filter(spans__isnull=False).distinct()
+            elif annotation_filter == 'hasRelations':
+                filtered_query = filtered_query.filter(relations__isnull=False).distinct()
+            elif annotation_filter == 'noAnnotations':
+                filtered_query = filtered_query.filter(
+                    categories__isnull=True, 
+                    spans__isnull=True,
+                    relations__isnull=True
+                )
+        
+        # Fix the Unknown sort field issue
+        if ordering:
+            original_ordering = ordering
+            sort_field = ordering.lstrip('-')
+            sort_direction = '-' if ordering.startswith('-') else ''
+            
+            print(f"Sort request: original={original_ordering}, field={sort_field}, direction={sort_direction}")
+            
+            # Special handling for status field which maps to states__isnull
+            if sort_field == 'status':
+                print("Applying status sort")
+                if sort_direction == '-':
+                    filtered_query = filtered_query.annotate(
+                        has_states=Count('states')
+                    ).order_by('-has_states')
+                else:
+                    filtered_query = filtered_query.annotate(
+                        has_states=Count('states')
+                    ).order_by('has_states')
+            # Special handling for annotation count fields
+            elif sort_field == 'categoryCount':
+                print("Applying category count sort")
+                filtered_query = filtered_query.annotate(
+                    cat_count=Count('categories')
+                ).order_by(f'{sort_direction}cat_count')
+            elif sort_field == 'spanCount':
+                print("Applying span count sort")
+                filtered_query = filtered_query.annotate(
+                    span_count=Count('spans')
+                ).order_by(f'{sort_direction}span_count')
+            elif sort_field == 'relationCount':
+                print("Applying relation count sort")
+                filtered_query = filtered_query.annotate(
+                    rel_count=Count('relations')
+                ).order_by(f'{sort_direction}rel_count')
+            # Standard field sorting
+            elif sort_field in field_mapping:
+                db_field = field_mapping[sort_field]
+                if db_field is not None:
+                    print(f"Applying standard sort on {db_field}")
+                    filtered_query = filtered_query.order_by(f'{sort_direction}{db_field}')
+                else:
+                    print(f"Field {sort_field} mapped to None, defaulting to updated_at")
+                    filtered_query = filtered_query.order_by('-updated_at')
+            else:
+                print(f"Unknown sort field: {sort_field}, defaulting to updated_at")
+                filtered_query = filtered_query.order_by('-updated_at')
+        
+        # Count annotated examples
+        annotated_count = Example.objects.filter(
+            project_id=project_id,
+            states__isnull=False
+        ).distinct().count()
+        
+        # Get filtered count
+        filtered_total = filtered_query.count()
+        
+        # Apply pagination
+        start = (page - 1) * page_size
+        end = page * page_size
+        # Use the already ordered query for pagination
+        paginated_query = filtered_query[start:end]
+
+        # Print final query for debugging
+        print(f"Final query: {paginated_query.query}")
+        
+        # Format the entries
+        entries = []
+        for example in paginated_query:
+            entries.append({
+                'id': example.id,
+                'text': example.text[:100] + '...' if len(example.text) > 100 else example.text,
+                'annotated': example.states.exists(),
+                'categoryCount': example.categories.count(),
+                'spanCount': example.spans.count(),
+                'relationCount': example.relations.count(),
+                'updatedAt': example.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+            })
+
+        data = {
+            'total': total,  # Total in database
+            'filtered': filtered_total,  # Count after filters
+            'annotated': annotated_count,
+            'unannotated': total - annotated_count,
+            'entries': entries,
+            'page': page,
+            'pageSize': page_size,
+            'totalPages': (filtered_total + page_size - 1) // page_size  # Ceiling division
+        }
+
+        return Response(data)
