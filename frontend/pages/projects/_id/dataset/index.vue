@@ -413,8 +413,21 @@ export default Vue.extend({
       this.dialogCompare = false; // Close the comparison dialog
     },
 
-    openVotePage(_item) {
-      this.$router.push(`/projects/${this.projectId}/votacoes`);
+    openVotePage(item) {
+      // Make sure item exists and has necessary data
+      if (!item || !item.id) {
+        console.warn('No document selected for voting');
+        return;
+      }
+      
+      // Navigate to votacoes page with document info
+      this.$router.push({
+        path: `/projects/${this.projectId}/votacoes`,
+        query: { 
+          documentId: item.id,
+          documentTitle: item.text || `Document #${item.id}`
+        }
+      });
     }
   }
 })
