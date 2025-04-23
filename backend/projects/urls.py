@@ -10,6 +10,7 @@ from .views.member import MemberList, MemberDetail, MyRole
 from .views.permissions import MyProjectPermissions  # Import from the new file
 from .views.annotation import UserAnnotationsAPI
 from .views.chat import ChatMessagesView
+from .views.discrepancies import DiscrepancyAnalysisViewSet
 
 
 # Create router for ViewSets
@@ -18,6 +19,7 @@ router = DefaultRouter()
 router.register(r'projects/(?P<project_id>\d+)/perspectives', PerspectiveViewSet, basename='perspective')
 router.register(r'projects/(?P<project_id>\d+)/perspective-groups', PerspectiveGroupViewSet, basename='perspective-group')
 router.register(r'projects/(?P<project_id>\d+)/perspective-answers', PerspectiveAnswerViewSet, 'perspective-answer')
+router.register(r'projects/(?P<project_id>\d+)/discrepanciesquestions', DiscrepancyAnalysisViewSet, basename='discrepancy-questions')
 
 urlpatterns = [
     # Include router URLs directly (not under another path)
@@ -36,7 +38,6 @@ urlpatterns = [
     path('projects/<int:project_id>/annotations', UserAnnotationsAPI.as_view(), name='user_annotations'),
     path("projects/<int:project_id>/votacoes", VotacoesView.as_view(), name="votacoes"),
     path("projects/<int:project_id>/chat", ChatMessagesView.as_view(), name="chat_messages"),
-
 
     path("projects/<int:project_id>/discrepacies", DiscrepancyAnalysisView.as_view(), name="discrepancy_analysis"),
 ]

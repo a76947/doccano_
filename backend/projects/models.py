@@ -271,3 +271,20 @@ class PerspectiveAnswer(models.Model):
 
     def __str__(self):
         return f"Answer to {self.perspective.question}: {self.answer}"
+
+
+class DiscrepanciesQuestions(models.Model):
+    project = models.ForeignKey(
+        'Project', 
+        on_delete=models.CASCADE, 
+        related_name='discrepancies'
+    )
+    
+    text = models.TextField()
+    tags = models.JSONField(default=list, blank=True)  
+    question = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default='open')
+
+    def __str__(self):
+        return f"Discrepancy: {self.text}"
