@@ -91,17 +91,15 @@
         <v-card-text>
           <div>
             <div v-for="(message, index) in messages" :key="index" class="mb-2">
-              <strong>{{ message.user }}:</strong> {{ message.text }}
+<strong :style="{ color:getUserColor(message.user) }">{{ message.user }}:</strong>{{ message.text }}
             </div>
             <v-textarea
               v-model="newMessage"
               label="Type your message"
               rows="2"
               outlined
-              :disabled="!currentDocument"
             />
             <v-btn 
-              :disabled="!currentDocument"
               class="mt-2" 
               color="primary" 
               @click="sendMessage"
@@ -383,6 +381,38 @@ export default {
           console.error('Error sending message:', error);
         }
       }
+    },
+    getUserColor(username) {
+      // Define a palette of highly distinct colors
+      const colors = [
+        '#FF0000', // Red
+        '#00A0FF', // Blue
+        '#00FF00', // Green
+        '#FF00FF', // Magenta
+        '#FFA500', // Orange
+        '#9400D3', // Purple
+        '#008080', // Teal
+        '#FF4500', // Orange-Red
+        '#FFD700', // Gold
+        '#4B0082', // Indigo
+        '#800000', // Maroon
+        '#00FFFF', // Cyan
+        '#8B4513', // Brown
+        '#000000', // Black
+        '#708090'  // Slate Gray
+      ];
+      
+      // Create a more distributed hash from the username
+      let hash = 0;
+      for (let i = 0; i < username.length; i++) {
+        // Use a prime number (31) to improve distribution
+        hash = ((hash << 5) - hash) + username.charCodeAt(i);
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      
+      // Use the hash to pick a color from our palette
+      const index = Math.abs(hash) % colors.length;
+      return colors[index];
     }
   }
 };
