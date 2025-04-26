@@ -17,10 +17,15 @@
       @editRule="handleEditRule" 
     />
 
-    <!-- Botão para abrir o overlay -->
-    <v-btn color="success" class="mt-4" @click="openCreateDialog">
-      New Question
-    </v-btn>
+    <!-- Botões -->
+    <div class="mt-4">
+      <v-btn color="success" @click="openCreateDialog">
+        New Question
+      </v-btn>
+      <v-btn v-if="isAdmin" color="info" class="ml-2" @click="toVotation">
+        Log Data
+      </v-btn>
+    </div>
 
     <!-- Overlay para criar uma pergunta -->
     <v-dialog v-model="dialogCreateQuestion" max-width="500px">
@@ -78,7 +83,8 @@ export default {
       loading: true,
       newQuestion: '',
       showErrors: false,
-      dialogCreateQuestion: false, // controla a exibição do overlay
+      dialogCreateQuestion: false,
+      user: {},
     };
   },
   computed: {
@@ -88,19 +94,30 @@ export default {
     hasRules() {
       return this.rules && this.rules.length > 0;
     },
+    isAdmin() {
+      return this.user && this.user.isProjectAdmin;
+    },
+  },
+  async created() {
+    try {
+      const member = await this.$repositories.member.fetchMyRole(this.projectId);
+      this.user = member;
+    } catch (error) {
+      console.warn("Erro ao buscar o usuário:", error);
+    }
   },
   mounted() {
     this.fetchRules();
   },
   methods: {
     handleEditRule({ id, editedText }) {
-    console.log('Edit recebido no index para id:', id, 'com o texto:', editedText);
+      console.log('Edit recebido no index para id:', id, 'com o texto:', editedText);
       this.$services.rules.editRule(this.projectId, id, editedText)
         .then(response => {
           console.log('API edit response:', response);
           this.snackbarMessage = 'Rule updated successfully!';
           this.snackbar = true;
-          this.fetchRules(); // Atualiza a lista de regras após a edição
+          this.fetchRules();
         })
         .catch(err => {
           console.error('Error editing rule:', err.response || err);
@@ -116,13 +133,11 @@ export default {
       console.log('ID recebido para remoção no index:', id);
       try {
         const response = await this.$services.rules.deleteRule(this.projectId, id);
-        // Se o backend retornar um status ou mensagem, você pode tratar aqui
         if (response && (response.status === 200 || response.message)) {
           console.log('API delete response:', response);
           this.snackbarMessage = 'Rule deleted successfully!';
           this.snackbar = true;
         } else {
-          // Caso não haja resposta, trate como erro
           throw new Error('No response returned from delete request.');
         }
       } catch (err) {
@@ -133,9 +148,8 @@ export default {
           this.snackbarErrorMessage = 'Failed to delete rule. Please try again later.';
         }
         this.snackbarError = true;
-      }
-      finally {
-        this.fetchRules(); // Atualiza a lista de regras após a exclusão
+      } finally {
+        this.fetchRules();
       }
     },
     openCreateDialog() {
@@ -152,24 +166,20 @@ export default {
         return;
       }
       try {
-        const response = await this.$services.rules.createRule(
-          this.projectId,
-          this.newQuestion
-        );
+        const response = await this.$services.rules.createRule(this.projectId, this.newQuestion);
         console.log("Pergunta submetida:", this.newQuestion);
         console.log('API response:', response);
         this.snackbarMessage = 'Question submitted successfully!';
         this.snackbar = true;
         this.fetchRules();
         this.newQuestion = '';
-        this.closeDialog(); // fecha o overlay
+        this.closeDialog();
       } catch (err) {
         console.error('Error submitting question:', err.response || err);
         if (err.response && err.response.data && err.response.data.error) {
           this.snackbarErrorMessage = err.response.data.error;
         } else {
-          this.snackbarErrorMessage =
-            'Failed to submit question. Please try again later.';
+          this.snackbarErrorMessage = 'Failed to submit question. Please try again later.';
         }
         this.snackbarError = true;
       } finally {
@@ -178,16 +188,13 @@ export default {
     },
     async fetchRules() {
       try {
-        console.log('Fetching rules...');
         const response = await this.$services.rules.listRulesToSubmit(this.projectId);
         console.log('API response:', response);
         if (!response.rules || response.rules.length === 0) {
           this.snackbarErrorMessage = 'No Rules found for this project.';
           this.snackbarError = true;
-          // Cria um novo array vazio para garantir a reatividade
           this.rules = [];
         } else {
-          // Cria um novo array com as regras retornadas
           this.rules = [...response.rules];
         }
       } catch (err) {
@@ -198,6 +205,9 @@ export default {
         this.loading = false;
       }
     },
+    toVotation() {
+      console.log('Log Data button clicked');
+    }
   },
 };
 </script>
