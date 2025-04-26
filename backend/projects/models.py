@@ -300,3 +300,24 @@ class VotingSession(models.Model):
 
     def __str__(self):
         return f"VotingSession for Project {self.project.id} created on {self.created_at}"
+    
+class VotingSessionAnswer(models.Model):
+    voting_session = models.ForeignKey(
+        'VotingSession', 
+        on_delete=models.CASCADE, 
+        related_name='answers'
+    )
+    project = models.ForeignKey(
+        'Project', 
+        on_delete=models.CASCADE, 
+        related_name='voting_session_answers'
+    )
+    created_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    answer = models.JSONField(default=list, blank=True)  # Lista de strings
+
+    def __str__(self):
+        return f"Answer to {self.voting_session.questions}: {self.answer}"

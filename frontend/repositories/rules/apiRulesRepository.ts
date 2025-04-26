@@ -14,22 +14,17 @@ export class ApiRulesRepository {
     }
 
     async submit(url: string, question: string) {
-        console.log('url', url)
         const response = await ApiService.post(url, { question })
         return response.data
     }
 
     async delete(url: string, questionId: string | number) {
-        console.log('aqui no repository', url);
         const response = await ApiService.delete(url, { data: { id: questionId } });
-        console.log('aqui no repository response', response);
         return response.data;
     }
 
     async edit(url: string, question: string) {
-        console.log('aqui no repository', url);
         const response = await ApiService.put(url, { question });
-        console.log('aqui no repository response', response);
         return response.data;
     }
 }

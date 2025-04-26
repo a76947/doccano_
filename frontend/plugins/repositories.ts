@@ -36,6 +36,8 @@ import { ApiRulesRepository } from '~/repositories/rules/apiRulesRepository'
 
 import { ApiVotingRepository } from '~/repositories/votation/votingRepository'
 
+import { ApiAnswerRepository } from '~/repositories/answerule/answerRuleRepository'
+
 export interface Repositories {
   // User
   auth: APIAuthRepository
@@ -89,6 +91,8 @@ export interface Repositories {
   rules: ApiRulesRepository // Add this line
 
   voting: ApiVotingRepository // Add this line
+
+  answer: ApiAnswerRepository
 
   // Annotation
   annotation: APIAnnotationRepository
@@ -150,6 +154,8 @@ const repositories: Repositories = {
   rules: new ApiRulesRepository(),
 
   voting: new ApiVotingRepository(), // Will be replaced in services.ts
+
+  answer: new ApiAnswerRepository(),
 
   // Perspective
   perspective: {} as ApiPerspectiveRepository, // Will be replaced in services.ts

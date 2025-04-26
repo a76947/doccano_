@@ -9,6 +9,9 @@
       </template>
     </v-card-title>
 
+    <v-card-title>
+      Regras
+    </v-card-title>
     <RulesTable 
       :items="rules"
       :loading="loading"
@@ -26,6 +29,21 @@
         Log Data
       </v-btn>
     </div>
+
+    <v-expansion-panels>
+      <v-expansion-panel>
+        <v-expansion-panel-header>
+          Segunda Tabela de Regras
+        </v-expansion-panel-header>
+        <v-expansion-panel-content>
+          <StringTableWithResponse 
+            :items="rulesSecondTable"
+            :loading="loadingSecondTable"
+            @onSubmit="submitResponses"
+          />
+        </v-expansion-panel-content>
+      </v-expansion-panel>
+    </v-expansion-panels>
 
     <!-- Overlay para criar uma pergunta -->
     <v-dialog v-model="dialogCreateQuestion" max-width="500px">
@@ -90,14 +108,16 @@
 
 <script>
 import RulesTable from '~/components/rules/rulesTable.vue';
+import StringTableWithResponse from '~/components/rules/stringTableWithResponse.vue';
 
 export default {
-  components: { RulesTable },
+  components: { RulesTable, StringTableWithResponse },
   layout: 'project',
   middleware: ['check-auth', 'auth', 'setCurrentProject'],
   data() {
     return {
       rules: [],
+      rulesSecondTable: [],
       snackbar: false,
       snackbarMessage: '',
       snackbarError: false,
@@ -110,6 +130,7 @@ export default {
       selectedDate: null,          // Data selecionada no calendário
       selectedTime: null,          // Horário selecionado
       user: {},
+      validSession: null,
     };
   },
   computed: {
@@ -133,8 +154,66 @@ export default {
   },
   mounted() {
     this.fetchRules();
+    this.responseTable();
   },
   methods: {
+    async updateExpiredSessions() {
+      try {
+        const response = await this.$services.voting.list(this.projectId);
+        const sessions = response.voting_sessions || [];
+        const now = new Date();
+        for (const session of sessions) {
+          // Converte a end_date para um objeto Date
+          const endDate = new Date(session.vote_end_date);
+          if (endDate < now && !session.finish) {
+            await this.$services.voting.updateSessionFinish(this.projectId, session.id);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar sessões expiradas:', error);
+      }
+    },
+
+    async responseTable() {
+      await this.updateExpiredSessions();
+      await this.fetchRulesSecondTable();
+    },
+
+    async submitResponses(responses) {
+      console.log('Respostas recebidas da StringTableWithResponse:', responses);
+      if (responses.incomplete) {
+        this.snackbarErrorMessage = 'Please answer all questions before submitting.';
+        this.snackbarError = true;
+      } else {
+        console.log('Respostas completas:', responses.responses);
+        await this.submitAnswers(this.validSession.id, 
+        this.projectId, responses.responses); // <--- CORRETO AGORA
+        this.snackbarMessage = 'Responses submitted successfully!';
+        this.snackbar = true;
+      }
+    },
+
+    async submitAnswers(votingSessionId, projectId, responses) {
+      console.log('Submetendo respostas:', responses);
+      console.log('ID da votação:', votingSessionId);
+      console.log('ID do projeto:', projectId);
+      try {
+        
+        const response = await this.$services.answer.createAnswerSession(
+          projectId,
+          responses,
+          votingSessionId
+        );
+        console.log('Respostas submetidas com sucesso:', response);
+        this.snackbarMessage = 'Responses submitted successfully!';
+        this.snackbar = true;
+      } catch (error) {
+          console.error('Erro ao submeter respostas:', error);
+          this.snackbarErrorMessage = 'Failed to submit responses. Please try again later.';
+          this.snackbarError = true;
+      }
+    },
+
     handleEditRule({ id, editedText }) {
       console.log('Edit recebido no index para id:', id, 'com o texto:', editedText);
       this.$services.rules.editRule(this.projectId, id, editedText)
@@ -230,6 +309,35 @@ export default {
         this.loading = false;
       }
     },
+    async fetchRulesSecondTable() {
+      try {
+        const response = await this.$services.voting.list(this.projectId);
+        console.log('API response votações:', response);
+        
+        const sessions = response.voting_sessions || [];
+        
+        // Seleciona o primeiro tuplo cuja sessão não esteja finalizada (finish !== true)
+        this.validSession = sessions.find(session => session.finish !== true);
+        
+        if (this.validSession && this.validSession.questions 
+        && this.validSession.questions.length) {
+          // Atribui rulesSecondTable com as regras (strings) do primeiro tuplo válido
+          this.rulesSecondTable = this.validSession.questions;
+          console.log('Sessão válida encontrada:', this.validSession.id);
+          console.log('Regras extraídas do primeiro tuplo não finalizado:', this.rulesSecondTable);
+        } else {
+          this.snackbarErrorMessage = 'No valid session found to extract rules.';
+          this.snackbarError = true;
+          this.rulesSecondTable = [];
+        }
+      } catch (err) {
+        console.error('Error fetching rules:', err);
+        this.snackbarErrorMessage = 'Failed to fetch rules. Please try again later.';
+        this.snackbarError = true;
+      } finally {
+        this.loadingSecondTable = false;
+      }
+    },
     openCalendar() {
       this.dialogCalendar = true;
       if (!this.selectedDate) {
@@ -254,6 +362,7 @@ export default {
       console.log("Vote end date:", this.rules);
       const questionsList = this.rules.map(rule => rule.regra ? rule.regra : '');
       console.log("Questions list:", questionsList);
+      
       try {
         console.log("Criando nova sessão de votação com vote_end_date:", voteEndDate, "e questions:", questionsList);
         const response = await this.$services.voting.createVotingSession(
@@ -263,6 +372,19 @@ export default {
         console.log("Voting session created:", response);
         this.snackbarMessage = "Voting session created successfully!";
         this.snackbar = true;
+        
+        // Após criar a sessão, elimina cada regra da base de dados.
+        for (const rule of this.rules) {
+          try {
+            await this.$services.rules.deleteRule(this.projectId, rule.id);
+            console.log(`Regra com id ${rule.id} removida com sucesso.`);
+          } catch (err) {
+            console.error(`Erro ao remover a regra com id ${rule.id}:`, err);
+          }
+        }
+        // Atualiza a lista local para refletir que todas as regras foram removidas.
+        this.rules = [];
+        
       } catch (err) {
         console.error("Error creating voting session:", err);
         this.snackbarErrorMessage = "Failed to create voting session.";

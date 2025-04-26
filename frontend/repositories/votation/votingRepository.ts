@@ -17,7 +17,7 @@ export class ApiVotingRepository {
       const response = await ApiService.post(url, {
         vote_end_date: voteEndDate,
         questions, // usando shorthand
-        finish: true,
+        finish: false,
       });
       console.log('Repository: Resposta do ApiService:', response);
       return response.data;
@@ -25,5 +25,11 @@ export class ApiVotingRepository {
       console.error('Repository: Erro no ApiService.post:', error);
       throw error;
     }
+  }
+
+  async updateSessionFinish(url: string) {
+    console.log('aqui no repository voting updateSessionFinish() com URL:', url);
+    const response = await ApiService.put(url, { finish: true });
+    return response;
   }
 }
