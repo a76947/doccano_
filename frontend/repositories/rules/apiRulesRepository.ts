@@ -25,4 +25,11 @@ export class ApiRulesRepository {
         console.log('aqui no repository response', response);
         return response.data;
     }
+
+    async edit(url: string, question: string) {
+        console.log('aqui no repository', url);
+        const response = await ApiService.put(url, { question });
+        console.log('aqui no repository response', response);
+        return response.data;
+    }
 }

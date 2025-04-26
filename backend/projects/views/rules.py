@@ -36,6 +36,18 @@ class RulesToSubmitAnalysisView(APIView):
         except ToSubmitQuestions.DoesNotExist:
             return Response({"error": "Rule not found."}, status=status.HTTP_404_NOT_FOUND)
 
+    def put(self, request, project_id, question_id):
+        question = request.data.get("question")
+        if not question:
+            return Response({"error": "Question field is required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            rule = ToSubmitQuestions.objects.get(project_id=project_id, id=question_id)
+            rule.question = question
+            rule.save()
+            return Response({"id": rule.id, "regra": rule.question}, status=status.HTTP_200_OK)
+        except ToSubmitQuestions.DoesNotExist:
+            return Response({"error": "Rule not found."}, status=status.HTTP_404_NOT_FOUND)
 
 class RulesSubmitedAnalysisView(APIView):
     permission_classes = [permissions.IsAuthenticated]

@@ -128,7 +128,10 @@ const cancelEdit = () => {
 
 const confirmEdit = () => {
   console.log('Edited rule:', editedRegra.value, 'for item:', selectedItem.value);
-  // Aqui você pode adicionar a lógica para atualizar a regra no back-end
+  
+  // Emite o evento "editRule" com um objeto contendo o id e o novo texto da regra
+  emit('editRule', { id: selectedItem.value.id, editedText: editedRegra.value });
+  
   isEditing.value = false;
   showAcao.value = false;
 };

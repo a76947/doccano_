@@ -24,4 +24,11 @@ export class RulesApplicationService {
         const response = await this.repository.delete(url, questionId);
         return response;
     }
+
+    async editRule(projectId: string | number, questionId: string | number, question: string) {
+        console.log('aqui no service rules para edit', questionId);
+        const url = `/projects/${projectId}/rules/tosubmit/${questionId}/`;
+        const response = await this.repository.edit(url, question);
+        return response;
+    }
 }
