@@ -17,7 +17,7 @@ from .models import (
     Perspective,
     PerspectiveAnswer,
     PerspectiveGroup,
-    DiscrepanciesQuestions,
+    ToSubmitQuestions,
 )
 
 
@@ -197,19 +197,14 @@ class PerspectiveGroupSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
-class DiscrepanciesQuestionsSerializer(serializers.ModelSerializer):
+class DiscrepanciesToSubmitQuestionsSerializer(serializers.ModelSerializer):
     
-    question = serializers.ListField(
-        child=serializers.CharField(), allow_empty=True
-    )
-    
+      
     class Meta:
-        model = DiscrepanciesQuestions
+        model = ToSubmitQuestions
         fields = [
             'id',
             'project',
-            'text',
-            'tags',
             'question',
             'created_at',
             'status',

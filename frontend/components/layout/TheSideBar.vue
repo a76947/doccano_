@@ -149,6 +149,12 @@ export default {
           text: 'Votações',
           link: 'votacoes',
           isVisible: true
+        },
+        {
+          icon: mdiChartBar,
+          text: 'Regras',
+          link: 'rules',
+          isVisible: true
         }
       ]
       return items.filter((item) => item.isVisible)

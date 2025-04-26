@@ -13,7 +13,7 @@ import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspect
 import { PerspectiveApplicationService } from '@/services/application/perspective/perspectiveApplicationService'
 import { AnnotationApplicationService } from '@/services/application/annotation/annotationApplicationService'
 import { DiscrepacieApplicationService } from '@/services/application/descrepancys/discrepanciesApplicationService'
-
+import { RulesApplicationService } from '~/services/application/rules/rulesApplicationService'
 
 
 export interface Services {
@@ -31,6 +31,7 @@ export interface Services {
   perspective: PerspectiveApplicationService
   annotation: AnnotationApplicationService
   discrepancy: DiscrepacieApplicationService
+  rules: RulesApplicationService
 
 }
 
@@ -60,7 +61,8 @@ const plugin: Plugin = (_, inject) => {
     user: new UserApplicationService(repositories.user),
     perspective: new PerspectiveApplicationService(repositories.perspective),
     annotation: new AnnotationApplicationService(repositories.annotation),
-    discrepancy: new DiscrepacieApplicationService(repositories.discrepancy) // Add this line
+    discrepancy: new DiscrepacieApplicationService(repositories.discrepancy), // Add this line
+    rules: new RulesApplicationService(repositories.rules), // Add this line
 
   }
   inject('services', services)

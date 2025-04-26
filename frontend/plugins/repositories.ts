@@ -32,6 +32,7 @@ import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspect
 import { APIAnnotationRepository } from '@/repositories/annotation/apiAnnotationRepository'
 import { ApiDiscrepancieRepository } from '~/repositories/discrepancies/apiDiscrepancieRepository'
 
+import { ApiRulesRepository } from '~/repositories/rules/apiRulesRepository'
 
 export interface Repositories {
   // User
@@ -82,6 +83,8 @@ export interface Repositories {
 
   // Discrepancies
   discrepancy: ApiDiscrepancieRepository // Add this line
+
+  rules: ApiRulesRepository // Add this line
 
   // Annotation
   annotation: APIAnnotationRepository
@@ -139,6 +142,8 @@ const repositories: Repositories = {
 
   // Discrepancies
   discrepancy: new ApiDiscrepancieRepository(),
+
+  rules: new ApiRulesRepository(),
 
 
   // Perspective
