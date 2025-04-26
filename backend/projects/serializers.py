@@ -18,6 +18,7 @@ from .models import (
     PerspectiveAnswer,
     PerspectiveGroup,
     ToSubmitQuestions,
+    VotingSession,
 )
 
 
@@ -209,4 +210,10 @@ class DiscrepanciesToSubmitQuestionsSerializer(serializers.ModelSerializer):
             'created_at',
             'status',
         ]
+        read_only_fields = ['id', 'created_at']
+
+class VotingSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VotingSession
+        fields = ['id', 'project', 'questions', 'created_at', 'vote_end_date', 'finish']
         read_only_fields = ['id', 'created_at']

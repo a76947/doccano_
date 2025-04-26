@@ -14,6 +14,7 @@ import { PerspectiveApplicationService } from '@/services/application/perspectiv
 import { AnnotationApplicationService } from '@/services/application/annotation/annotationApplicationService'
 import { DiscrepacieApplicationService } from '@/services/application/descrepancys/discrepanciesApplicationService'
 import { RulesApplicationService } from '~/services/application/rules/rulesApplicationService'
+import { VotingApplicationService } from '~/services/application/votationrules/votingApplicationService'
 
 
 export interface Services {
@@ -32,6 +33,7 @@ export interface Services {
   annotation: AnnotationApplicationService
   discrepancy: DiscrepacieApplicationService
   rules: RulesApplicationService
+  voting : VotingApplicationService
 
 }
 
@@ -63,7 +65,7 @@ const plugin: Plugin = (_, inject) => {
     annotation: new AnnotationApplicationService(repositories.annotation),
     discrepancy: new DiscrepacieApplicationService(repositories.discrepancy), // Add this line
     rules: new RulesApplicationService(repositories.rules), // Add this line
-
+    voting: new VotingApplicationService(repositories.voting), // Add this line
   }
   inject('services', services)
 }

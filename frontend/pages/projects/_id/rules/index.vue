@@ -22,7 +22,7 @@
       <v-btn color="success" @click="openCreateDialog">
         New Question
       </v-btn>
-      <v-btn v-if="isAdmin" color="info" class="ml-2" @click="toVotation">
+      <v-btn v-if="isAdmin" color="info" class="ml-2" @click="openCalendar">
         Log Data
       </v-btn>
     </div>
@@ -46,6 +46,28 @@
           <v-btn color="primary" text @click="submitQuestion">
             Submit
           </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Novo Overlay para o Calendário e Relógio -->
+    <v-dialog v-model="dialogCalendar" max-width="600px">
+      <v-card>
+        <v-card-title class="headline">Select Date & Time to end Votation</v-card-title>
+        <v-card-text>
+          <v-row>
+            <v-col cols="6">
+              <v-date-picker v-model="selectedDate"></v-date-picker>
+            </v-col>
+            <v-col cols="6">
+              <v-time-picker v-model="selectedTime" format="24hr"></v-time-picker>
+            </v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="closeCalendar">Cancel</v-btn>
+          <v-btn color="primary" text @click="confirmCalendar">Confirm</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -84,6 +106,9 @@ export default {
       newQuestion: '',
       showErrors: false,
       dialogCreateQuestion: false,
+      dialogCalendar: false,
+      selectedDate: null,          // Data selecionada no calendário
+      selectedTime: null,          // Horário selecionado
       user: {},
     };
   },
@@ -205,9 +230,55 @@ export default {
         this.loading = false;
       }
     },
+    openCalendar() {
+      this.dialogCalendar = true;
+      if (!this.selectedDate) {
+        this.selectedDate = new Date().toISOString().substr(0, 10);
+      }
+      if (!this.selectedTime) {
+        // Formata a hora atual (ex: "14:30")
+        const now = new Date();
+        const hour = now.getHours().toString().padStart(2, '0');
+        const minute = now.getMinutes().toString().padStart(2, '0');
+        this.selectedTime = `${hour}:${minute}`;
+      }
+    },
+    closeCalendar() {
+      this.dialogCalendar = false;
+    },
+
+    async createVotingSession() {
+      const voteEndDate = new Date(`${this.selectedDate}T${this.selectedTime}:00Z`).toISOString();
+      
+      // Extrai somente o texto da regra e ignora demais propriedades (como os ids)
+      console.log("Vote end date:", this.rules);
+      const questionsList = this.rules.map(rule => rule.regra ? rule.regra : '');
+      console.log("Questions list:", questionsList);
+      try {
+        console.log("Criando nova sessão de votação com vote_end_date:", voteEndDate, "e questions:", questionsList);
+        const response = await this.$services.voting.createVotingSession(
+          this.projectId, 
+          voteEndDate, 
+          questionsList);
+        console.log("Voting session created:", response);
+        this.snackbarMessage = "Voting session created successfully!";
+        this.snackbar = true;
+      } catch (err) {
+        console.error("Error creating voting session:", err);
+        this.snackbarErrorMessage = "Failed to create voting session.";
+        this.snackbarError = true;
+      }
+    },
+    confirmCalendar() {
+      console.log('Selected date:', this.selectedDate);
+      console.log('Selected time:', this.selectedTime);
+      this.createVotingSession();
+      this.closeCalendar();
+    },
     toVotation() {
-      console.log('Log Data button clicked');
-    }
+      // Se o método toVotation() era o handler anterior, agora ele chama openCalendar()
+      this.openCalendar();
+    },
   },
 };
 </script>

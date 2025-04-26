@@ -285,3 +285,18 @@ class ToSubmitQuestions(models.Model):
 
     def __str__(self):
         return f"Discrepancy: {self.text}"
+    
+
+class VotingSession(models.Model):
+    project = models.ForeignKey(
+        'Project', 
+        on_delete=models.CASCADE, 
+        related_name='voting_sessions'
+    )
+    questions = models.JSONField(default=list, blank=True)  # Lista de strings
+    created_at = models.DateTimeField(auto_now_add=True)
+    vote_end_date = models.DateTimeField(null=True, blank=True)  # Definida depois
+    finish = models.BooleanField(default=False)  # Novo campo boolean
+
+    def __str__(self):
+        return f"VotingSession for Project {self.project.id} created on {self.created_at}"

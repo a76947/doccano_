@@ -11,7 +11,7 @@ from .views.permissions import MyProjectPermissions  # Import from the new file
 from .views.annotation import UserAnnotationsAPI
 from .views.chat import ChatMessagesView
 from .views.rules import RulesToSubmitAnalysisView, RulesSubmitedAnalysisView
-
+from .views.votation import VotingSessionView
 
 # Create router for ViewSets
 router = DefaultRouter()
@@ -44,5 +44,8 @@ urlpatterns = [
     path("projects/<int:project_id>/rules/tosubmit", RulesToSubmitAnalysisView.as_view(), name="tosubmit_questions"),
     path("projects/<int:project_id>/rules/submited", RulesSubmitedAnalysisView.as_view(), name="submited_questions"),
     
-    path("projects/<int:project_id>/rules/tosubmit/<int:question_id>/", RulesToSubmitAnalysisView.as_view(), name="tosubmit_questions_delete")
+    path("projects/<int:project_id>/rules/tosubmit/<int:question_id>/", RulesToSubmitAnalysisView.as_view(), name="tosubmit_questions_delete"),
+
+    path("projects/<int:project_id>/votingsessions", VotingSessionView.as_view(), name="voting_sessions"),
+
 ]

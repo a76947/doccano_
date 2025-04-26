@@ -34,6 +34,8 @@ import { ApiDiscrepancieRepository } from '~/repositories/discrepancies/apiDiscr
 
 import { ApiRulesRepository } from '~/repositories/rules/apiRulesRepository'
 
+import { ApiVotingRepository } from '~/repositories/votation/votingRepository'
+
 export interface Repositories {
   // User
   auth: APIAuthRepository
@@ -85,6 +87,8 @@ export interface Repositories {
   discrepancy: ApiDiscrepancieRepository // Add this line
 
   rules: ApiRulesRepository // Add this line
+
+  voting: ApiVotingRepository // Add this line
 
   // Annotation
   annotation: APIAnnotationRepository
@@ -145,12 +149,15 @@ const repositories: Repositories = {
 
   rules: new ApiRulesRepository(),
 
+  voting: new ApiVotingRepository(), // Will be replaced in services.ts
 
   // Perspective
   perspective: {} as ApiPerspectiveRepository, // Will be replaced in services.ts
 
   // Annotation
-  annotation: new APIAnnotationRepository()
+  annotation: new APIAnnotationRepository(),
+
+  
 }
 
 const plugin: Plugin = (_, inject) => {
