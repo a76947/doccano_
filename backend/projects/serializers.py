@@ -24,20 +24,17 @@ class MemberSerializer(serializers.ModelSerializer):
     username = serializers.SerializerMethodField()
     rolename = serializers.SerializerMethodField()
 
-    @classmethod
-    def get_username(cls, instance):
+    def get_username(self, instance):
         user = instance.user
         return user.username if user else None
 
-    @classmethod
-    def get_rolename(cls, instance):
+    def get_rolename(self, instance):
         role = instance.role
         return role.name if role else None
 
     class Meta:
         model = Member
         fields = ("id", "user", "role", "username", "rolename")
-
 
 class TagSerializer(serializers.ModelSerializer):
     class Meta:

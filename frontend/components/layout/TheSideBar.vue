@@ -139,6 +139,14 @@ export default {
         },
 
         {
+          icon: mdiDatabase,
+          text: 'Report',
+          link: 'report',
+          isVisible: this.isProjectAdmin
+        },
+
+
+        {
           icon: mdiCog,
           text: this.$t('settings.title'),
           link: 'settings',

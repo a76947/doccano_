@@ -10,6 +10,11 @@ from .views.member import MemberList, MemberDetail, MyRole
 from .views.permissions import MyProjectPermissions  # Import from the new file
 from .views.annotation import UserAnnotationsAPI
 from .views.chat import ChatMessagesView
+from .views.report import AnnotationReportView
+from .views.project_labels import ProjectLabelListAPI  # ou o nome correto do ficheiro
+
+
+
 
 
 # Create router for ViewSets
@@ -36,6 +41,8 @@ urlpatterns = [
     path('projects/<int:project_id>/annotations', UserAnnotationsAPI.as_view(), name='user_annotations'),
     path("projects/<int:project_id>/votacoes", VotacoesView.as_view(), name="votacoes"),
     path("projects/<int:project_id>/chat", ChatMessagesView.as_view(), name="chat_messages"),
+    path('projects/<int:project_id>/report/', AnnotationReportView.as_view(), name='annotation-report'),
+    path("projects/<int:project_id>/labels/", ProjectLabelListAPI.as_view(), name="project_labels"),
 
 
     path("projects/<int:project_id>/discrepacies", DiscrepancyAnalysisView.as_view(), name="discrepancy_analysis"),
