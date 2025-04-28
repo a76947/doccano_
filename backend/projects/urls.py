@@ -2,16 +2,18 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from .views.perspective import PerspectiveViewSet, PerspectiveGroupViewSet, PerspectiveAnswerViewSet
-from .views.project import ProjectList, ProjectDetail, CloneProject
+from .views.project import ProjectList, ProjectDetail, CloneProject, DiscrepancyAnalysisView
+
 from .views.votacoes import VotacoesView
-from .views.project import DiscrepancyAnalysisView, ProjectList, ProjectDetail, CloneProject
 from .views.tag import TagList, TagDetail
 from .views.member import MemberList, MemberDetail, MyRole
 from .views.permissions import MyProjectPermissions  # Import from the new file
 from .views.annotation import UserAnnotationsAPI
 from .views.chat import ChatMessagesView
 from .views.rules import RulesToSubmitAnalysisView, RulesSubmitedAnalysisView
-from .views.votation import VotingSessionView, VotingSessionAnswerView
+from .views.votation import VotingSessionView, VotingSessionAnswerView, VotingResultsView
+
+
 
 # Create router for ViewSets
 router = DefaultRouter()
@@ -19,6 +21,7 @@ router = DefaultRouter()
 router.register(r'projects/(?P<project_id>\d+)/perspectives', PerspectiveViewSet, basename='perspective')
 router.register(r'projects/(?P<project_id>\d+)/perspective-groups', PerspectiveGroupViewSet, basename='perspective-group')
 router.register(r'projects/(?P<project_id>\d+)/perspective-answers', PerspectiveAnswerViewSet, 'perspective-answer')
+
 
 
 urlpatterns = [
@@ -38,6 +41,8 @@ urlpatterns = [
     path('projects/<int:project_id>/annotations', UserAnnotationsAPI.as_view(), name='user_annotations'),
     path("projects/<int:project_id>/votacoes", VotacoesView.as_view(), name="votacoes"),
     path("projects/<int:project_id>/chat", ChatMessagesView.as_view(), name="chat_messages"),
+    path('projects/<int:project_id>/voting-results', VotingResultsView.as_view(), name='voting-results'),
+
 
     path("projects/<int:project_id>/discrepacies", DiscrepancyAnalysisView.as_view(), name="discrepancy_analysis"),
     
@@ -46,7 +51,7 @@ urlpatterns = [
     
     path("projects/<int:project_id>/rules/tosubmit/<int:question_id>/", RulesToSubmitAnalysisView.as_view(), name="tosubmit_questions_delete"),
 
-    path("projects/<int:project_id>/votingsessions", VotingSessionView.as_view(), name="voting_sessions"),
+    path("projects/<int:project_id>/votingsessions/", VotingSessionView.as_view(), name="voting_sessions"),
 
     path("projects/<int:project_id>/votingsessions/<int:questions_id>/", VotingSessionView.as_view(), name="voting_session_detail"),
 

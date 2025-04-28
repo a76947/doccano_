@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework import status, permissions
 from projects.models import VotingSession, VotingSessionAnswer
+from rest_framework.renderers import JSONRenderer
 
 class VotingSessionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -33,7 +34,6 @@ class VotingSessionView(APIView):
                 "finish": session.finish,
             } for session in sessions]
             return Response({"voting_sessions": sessions_list}, status=status.HTTP_200_OK)
-        
 
     def post(self, request, project_id):
         questions = request.data.get("questions", [])
@@ -54,7 +54,7 @@ class VotingSessionView(APIView):
             "vote_end_date": session.vote_end_date,
             "finish": session.finish,
         }, status=status.HTTP_201_CREATED)
-    
+
     def put(self, request, project_id, questions_id):
         try:
             session = VotingSession.objects.get(project_id=project_id, id=questions_id)
@@ -63,7 +63,7 @@ class VotingSessionView(APIView):
             return Response({"id": session.id, "finish": session.finish}, status=status.HTTP_200_OK)
         except VotingSession.DoesNotExist:
             return Response({"error": "Voting session not found."}, status=status.HTTP_404_NOT_FOUND)
-        
+
 class VotingSessionAnswerView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -75,12 +75,12 @@ class VotingSessionAnswerView(APIView):
                 "voting_session": answer_obj.voting_session.id,
                 "project": answer_obj.project.id,
                 "created_by": answer_obj.created_by.id if answer_obj.created_by else None,
-                "answer": answer_obj.answer,  # Lista de strings
+                "answer": answer_obj.answer,
             }
             return Response(data, status=status.HTTP_200_OK)
         except VotingSessionAnswer.DoesNotExist:
             raise NotFound("Voting session answer not found for this project.")
-        
+
     def post(self, request, project_id, questions_id):
         answer = request.data.get("answer", [])
 
@@ -97,3 +97,33 @@ class VotingSessionAnswerView(APIView):
             "project": session_answer.project.id,
             "created_by": session_answer.created_by.id
         }, status=status.HTTP_201_CREATED)
+
+class VotingResultsView(APIView):  # AGORA SIM SEPARADO
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, project_id):
+        sessions = VotingSession.objects.filter(project_id=project_id, finish=True)
+        if not sessions.exists():
+            return Response({"message": "No finalized voting sessions found."}, status=status.HTTP_404_NOT_FOUND)
+
+        results = []
+        for session in sessions:
+            answers = VotingSessionAnswer.objects.filter(voting_session=session)
+            vote_counter = {}
+            for answer in answers:
+                for option in answer.answer:
+                    vote_counter[option] = vote_counter.get(option, 0) + 1
+
+            winner = max(vote_counter, key=vote_counter.get) if vote_counter else None
+
+            results.append({
+                "session_id": session.id,
+                "questions": session.questions,
+                "created_at": session.created_at,
+                "vote_end_date": session.vote_end_date,
+                "finish": session.finish,
+                "vote_counts": vote_counter,
+                "winning_option": winner,
+            })
+
+        return Response({"results": results}, status=status.HTTP_200_OK)
