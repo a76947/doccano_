@@ -1,5 +1,18 @@
 <template>
   <div>
+    <!-- Global Error Alert -->
+    <v-alert
+      v-if="chatError"
+      type="error"
+      dense
+      dismissible
+      class="mb-3"
+      transition="scale-transition"
+    >
+      <v-icon left>mdi-alert-circle</v-icon>
+      <strong>Chat System Error: Failed to connect to the database, try again later</strong>
+    </v-alert>
+
     <!-- Main Card with Votes -->
     <v-card>
       <v-card-title>
@@ -90,6 +103,7 @@
         </v-card-title>
         <v-card-text>
           <div>
+            <!-- Messages -->
             <div v-for="(message, index) in messages" :key="index" class="mb-2">
 <strong :style="{ color:getUserColor(message.user) }">{{ message.user }}:</strong>{{ message.text }}
             </div>
@@ -176,7 +190,9 @@ export default {
       messages: [],
       newMessage: '',
       documents: [], // Will contain available documents
-      selectedDocumentId: null
+      selectedDocumentId: null,
+      chatError: false,
+      chatErrorMessage: ''
     };
   },
 
@@ -206,11 +222,11 @@ export default {
     }
     
     this.fetchVotes();
-    this.loadMessagesFromLocalStorage();
+    this.fetchMessages();
 
-    // Optional: Set up polling to refresh messages periodically
+    // Set up polling to refresh messages periodically
     this.messagePolling = setInterval(() => {
-      this.loadMessagesFromLocalStorage();
+      this.fetchMessages();
     }, 5000); // Every 5 seconds
   },
 
@@ -307,80 +323,73 @@ export default {
         console.error('Error fetching votes:', error);
       }
     },
-    submitVote(voteId, option) {
-      const vote = this.votes.find(v => v.id === voteId);
-      if (vote) {
-        vote.results[option] += 1;
-      }
-    },
-    selectDocument(document) {
-      this.currentDocument = document;
-      this.loadMessagesFromLocalStorage();
-    },
-    loadMessagesFromLocalStorage() {
+    async fetchMessages() {
       try {
         const projectId = this.projectId;
-        // Use a project-wide key instead of document-specific
-        const storageKey = `chat_messages_project_${projectId}_global`;
-
-        console.log(`Loading messages for project ${projectId}`);
-
-        const storedMessages = localStorage.getItem(storageKey);
-
-        if (storedMessages) {
-          this.messages = JSON.parse(storedMessages);
-          console.log(`Loaded ${this.messages.length} messages for project ${projectId}`);
-        } else {
-          this.messages = [];
-          localStorage.setItem(storageKey, JSON.stringify(this.messages));
-          console.log(`Initialized empty message array for project ${projectId}`);
-        }
+        console.log(`Fetching messages for project ${projectId}`);
+        
+        // Remove trailing slash and check if we need to adjust the base path
+        const response = await this.$axios.get(`/v1/projects/${projectId}/chat`);
+        this.messages = response.data;
+        console.log(`Loaded ${this.messages.length} messages for project ${projectId}`);
       } catch (error) {
-        console.error('Error with local storage:', error);
+        console.error('Error fetching messages:', error);
         this.messages = [];
+        this.chatError = true;
+        this.chatErrorMessage = 'Failed to load messages. Please try again later.';
       }
     },
     async sendMessage() {
       if (this.newMessage.trim()) {
         try {
           const projectId = this.projectId;
-          // Use the same global key
-          const storageKey = `chat_messages_project_${projectId}_global`;
-
           const currentUsername = this.$store.state.auth.username || 'Anonymous';
 
-          const message = {
+          // Hide any previous error
+          this.chatError = false;
+          
+          // Remove trailing slash and check if we need to adjust the base path
+          await this.$axios.post(`/v1/projects/${projectId}/chat`, {
             user: currentUsername,
-            text: this.newMessage.trim(),
-            timestamp: new Date().toISOString()
-          };
-
-          let currentMessages = [];
-          const storedMessages = localStorage.getItem(storageKey);
-          if (storedMessages) {
-            currentMessages = JSON.parse(storedMessages);
-          }
-
-          currentMessages.push(message);
-          localStorage.setItem(storageKey, JSON.stringify(currentMessages));
-          this.messages = [...currentMessages];
+            message: this.newMessage.trim()
+          });
+          
+          // Clear the input field
           this.newMessage = '';
-
-          console.log(`Message saved for project ${projectId}`);
-
-          // Optional API call - modified to use project-wide chat endpoint
-          try {
-            await this.$axios.post(`/api/projects/${projectId}/chat/`, {
-              user: message.user,
-              message: message.text
-            });
-          } catch (apiError) {
-            console.log("API call failed:", apiError.message);
-          }
+          
+          // Refresh messages to show the newly added message
+          await this.fetchMessages();
+          
+          console.log(`Message sent for project ${projectId}`);
         } catch (error) {
           console.error('Error sending message:', error);
+          
+          // Display appropriate error message based on the error
+          if (error.response) {
+            // The request was made and the server responded with a status code
+            // that falls out of the range of 2xx
+            this.chatErrorMessage = `Server error: ${error.response.status} - ${error.response.data.error || 'Unable to send message'}`;
+          } else if (error.request) {
+            // The request was made but no response was received
+            this.chatErrorMessage = 'Network error: The server is unreachable. Please check your connection.';
+          } else {
+            // Something happened in setting up the request
+            this.chatErrorMessage = `Error: ${error.message}`;
+          }
+          
+          // Show the error
+          this.chatError = true;
+          
+          // Hide the error after 5 seconds
+          setTimeout(() => {
+            this.chatError = false;
+          }, 5000);
         }
       }
+    },
+    selectDocument(document) {
+      this.currentDocument = document;
+      this.fetchMessages();
     },
     getUserColor(username) {
       // Define a palette of highly distinct colors
