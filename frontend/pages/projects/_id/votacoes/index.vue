@@ -3,51 +3,52 @@
     <!-- Global Error Alert -->
     <v-alert
       v-if="chatError"
-      type="error"
+      :type="chatErrorMessage.includes('Database') ? 'warning' : 'error'"
+      :color="chatErrorMessage.includes('Database') ? 'amber darken-2' : 'error'"
       dense
       dismissible
       class="mb-3"
       transition="scale-transition"
     >
-      <v-icon left>mdi-alert-circle</v-icon>
-      <strong>Chat System Error: Failed to connect to the database, try again later</strong>
+      <v-icon left>{{ chatErrorMessage.includes('Database') 
+        ? 'mdi-database-off' : 'mdi-alert-circle' }}</v-icon>
+      <strong>{{ chatErrorMessage.includes('Database') 
+        ? 'Database Error:' : 'Chat System Error:' }}</strong> {{ chatErrorMessage }}
     </v-alert>
 
     <!-- Main Card with Votes -->
     <v-card>
       <v-card-title>
-        <template v-if="!hasVotes">
-          <v-btn 
-            v-if="isAdmin"
-            class="text-capitalize" 
-            color="primary" 
-            @click.stop="openCreateVoteDialog()"
-          >
-            Create Vote
-          </v-btn>
-          <v-tooltip v-else bottom>
-            <template #activator="{ on, attrs }">
-              <v-btn 
-                class="text-capitalize" 
-                color="primary" 
-                disabled
-                v-bind="attrs"
-                v-on="on"
-              >
-                Create Vote
-              </v-btn>
-            </template>
-            <span>Only administrators can create votes</span>
-          </v-tooltip>
-          <v-alert
-            v-if="!isAdmin"
-            type="error"
-            dense
-            class="mt-2"
-          >
-            You do not have permission to create votes. Please contact an administrator.
-          </v-alert>
-        </template>
+        <v-btn 
+          v-if="isAdmin"
+          class="text-capitalize" 
+          color="primary" 
+          @click.stop="openCreateVoteDialog()"
+        >
+          Create Vote
+        </v-btn>
+        <v-tooltip v-else bottom>
+          <template #activator="{ on, attrs }">
+            <v-btn 
+              class="text-capitalize" 
+              color="primary" 
+              disabled
+              v-bind="attrs"
+              v-on="on"
+            >
+              Create Vote
+            </v-btn>
+          </template>
+          <span>Only administrators can create votes</span>
+        </v-tooltip>
+        <v-alert
+          v-if="!isAdmin"
+          type="error"
+          dense
+          class="mt-2"
+        >
+          You do not have permission to create votes. Please contact an administrator.
+        </v-alert>
       </v-card-title>
 
       <!-- List of Votes -->
@@ -105,7 +106,8 @@
           <div>
             <!-- Messages -->
             <div v-for="(message, index) in messages" :key="index" class="mb-2">
-<strong :style="{ color:getUserColor(message.user) }">{{ message.user }}:</strong>{{ message.text }}
+<strong :style="{ color: 
+getUserColor(message.user) }">{{ message.user }}:</strong> {{ message.text }}
             </div>
             <v-textarea
               v-model="newMessage"
@@ -192,7 +194,11 @@ export default {
       documents: [], // Will contain available documents
       selectedDocumentId: null,
       chatError: false,
-      chatErrorMessage: ''
+      chatErrorMessage: '',
+      socket: null,
+      socketConnected: false,
+      socketError: false,
+      messagePollingInterval: null,
     };
   },
 
@@ -222,18 +228,17 @@ export default {
     }
     
     this.fetchVotes();
-    this.fetchMessages();
-
-    // Set up polling to refresh messages periodically
-    this.messagePolling = setInterval(() => {
-      this.fetchMessages();
-    }, 5000); // Every 5 seconds
+    this.connectWebSocket();
   },
 
   beforeDestroy() {
-    // Clear the interval when component is destroyed
-    if (this.messagePolling) {
-      clearInterval(this.messagePolling);
+    // Close WebSocket connection when component is destroyed
+    if (this.socket) {
+      this.socket.close();
+    }
+    // Clear polling interval if set
+    if (this.messagePollingInterval) {
+      clearInterval(this.messagePollingInterval);
     }
   },
 
@@ -339,57 +344,170 @@ export default {
         this.chatErrorMessage = 'Failed to load messages. Please try again later.';
       }
     },
-    async sendMessage() {
+    connectWebSocket() {
+      const projectId = this.projectId;
+      
+      // Close any existing connection
+      if (this.socket) {
+        this.socket.close();
+      }
+      
+      try {
+        // Point directly to Django server (adjust port if needed)
+        const backendHost = 'localhost:8000'; // Change this to where your Django server runs
+        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const wsUrl = `${protocol}${backendHost}/ws/projects/${projectId}/chat/`;
+        
+        console.log(`Attempting to connect WebSocket to: ${wsUrl}`);
+        this.socket = new WebSocket(wsUrl);
+        
+        this.socket.onopen = () => {
+          console.log(`WebSocket connected for project ${projectId}`);
+          this.socketConnected = true;
+          this.socketError = false;
+          
+          // Clear any previous error since we're now connected
+          this.chatError = false;
+        };
+        
+        this.socket.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
+          
+          // Add message to the list if it's not already there
+          const messageExists = this.messages.some(m => 
+            m.user === data.user && m.text === data.text
+          );
+          
+          if (!messageExists) {
+            this.messages.push(data);
+          }
+        };
+        
+        this.socket.onclose = (event) => {
+          console.log('WebSocket closed, reconnecting in 5s...', event.code);
+          this.socketConnected = false;
+          
+          // Try to reconnect after a delay
+          setTimeout(() => {
+            this.connectWebSocket();
+          }, 5000);
+        };
+        
+        this.socket.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          this.socketConnected = false;
+          this.socketError = true;
+          
+          // Set up error message
+          this.chatError = true;
+          this.chatErrorMessage = "WebSocket connection failed. Using standard HTTP for messages.";
+          
+          // Start polling for messages since WebSocket failed
+          this.startMessagePolling();
+        };
+      } catch (error) {
+        console.error('Error creating WebSocket:', error);
+        this.socketConnected = false;
+        this.socketError = true;
+        this.chatError = true;
+        this.chatErrorMessage = "WebSocket initialization failed. Using standard HTTP for messages.";
+        
+        // Start polling for messages since WebSocket failed
+        this.startMessagePolling();
+      }
+    },
+    startMessagePolling() {
+      console.log('Starting message polling as fallback');
+      // Clear existing polling interval if any
+      if (this.messagePollingInterval) {
+        clearInterval(this.messagePollingInterval);
+      }
+      
+      // Fetch messages immediately
+      this.fetchMessages();
+      
+      // Set up polling interval
+      this.messagePollingInterval = setInterval(() => {
+        this.fetchMessages();
+      }, 3000); // Poll every 3 seconds
+    },
+    sendMessage() {
       if (this.newMessage.trim()) {
         try {
-          const projectId = this.projectId;
           const currentUsername = this.$store.state.auth.username || 'Anonymous';
-
-          // Hide any previous error
-          this.chatError = false;
+          const message = this.newMessage.trim();
           
-          // Remove trailing slash and check if we need to adjust the base path
-          await this.$axios.post(`/v1/projects/${projectId}/chat`, {
-            user: currentUsername,
-            message: this.newMessage.trim()
-          });
-          
-          // Clear the input field
+          // Clear the input field immediately for better UX
           this.newMessage = '';
           
-          // Refresh messages to show the newly added message
-          await this.fetchMessages();
-          
-          console.log(`Message sent for project ${projectId}`);
+          if (this.socketConnected) {
+            // Try to send via WebSocket first
+            try {
+              console.log('Attempting to send message via WebSocket');
+              this.socket.send(JSON.stringify({
+                user: currentUsername,
+                message
+              }));
+              console.log('WebSocket message sent successfully');
+            } catch (wsError) {
+              // WebSocket failed, fall back to HTTP
+              console.error('WebSocket send failed, falling back to HTTP:', wsError);
+              this.sendMessageViaHttp(currentUsername, message);
+            }
+          } else {
+            // WebSocket not connected, use HTTP directly
+            console.log('WebSocket not connected, using HTTP API');
+            this.sendMessageViaHttp(currentUsername, message);
+          }
         } catch (error) {
           console.error('Error sending message:', error);
-          
-          // Display appropriate error message based on the error
-          if (error.response) {
-            // The request was made and the server responded with a status code
-            // that falls out of the range of 2xx
-            this.chatErrorMessage = `Server error: ${error.response.status} - ${error.response.data.error || 'Unable to send message'}`;
-          } else if (error.request) {
-            // The request was made but no response was received
-            this.chatErrorMessage = 'Network error: The server is unreachable. Please check your connection.';
-          } else {
-            // Something happened in setting up the request
-            this.chatErrorMessage = `Error: ${error.message}`;
-          }
-          
-          // Show the error
           this.chatError = true;
+          this.chatErrorMessage = "Failed to send message: " + error.message;
           
-          // Hide the error after 5 seconds
+          // Hide error after 5 seconds
           setTimeout(() => {
             this.chatError = false;
           }, 5000);
         }
       }
     },
+
+    async sendMessageViaHttp(username, message) {
+      try {
+        const projectId = this.projectId;
+        
+        // Send message via HTTP API
+        await this.$axios.post(`/v1/projects/${projectId}/chat`, {
+          user: username,
+          message
+        });
+        
+        console.log('HTTP message sent successfully');
+        
+        // Refresh messages to show the newly added one
+        await this.fetchMessages();
+      } catch (error) {
+        console.error('HTTP fallback error:', error);
+        this.chatError = true;
+        
+        // Check if this might be a database connection error
+        if (error.response && (error.response.status === 500 || error.response.status === 503)) {
+          this.chatErrorMessage = "Database connection error. Messages cannot be sent or received. Please try again later.";
+        } else {
+          this.chatErrorMessage = "Failed to send message to server. Please check your connection.";
+        }
+        
+        // Hide error after 8 seconds (longer for database error)
+        setTimeout(() => {
+          this.chatError = false;
+        }, 8000);
+      }
+    },
     selectDocument(document) {
       this.currentDocument = document;
-      this.fetchMessages();
+      // Reconnect WebSocket when document changes
+      this.connectWebSocket();
     },
     getUserColor(username) {
       // Define a palette of highly distinct colors
