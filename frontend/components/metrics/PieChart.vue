@@ -7,46 +7,22 @@ export default {
     chartData: {
       type: Object,
       required: true
-    }
-  },
-  
-  data() {
-    return {
-      options: {
+    },
+    options: {
+      type: Object,
+      default: () => ({
         responsive: true,
-        maintainAspectRatio: false,
-        legend: {
-          position: 'bottom'
-        },
-        tooltips: {
-          callbacks: {
-            label(tooltipItem, data) {
-              const dataset = data.datasets[tooltipItem.datasetIndex];
-              const total = dataset.data.reduce((prev, current) => prev + current, 0);
-              const currentValue = dataset.data[tooltipItem.index];
-              const percentage = Math.floor(((currentValue/total) * 100) + 0.5);
-              return data.labels[tooltipItem.index] + ': ' + currentValue + ' (' + percentage + '%)';
-            }
-          }
-        }
-      }
+        maintainAspectRatio: false
+      })
     }
   },
   
   mounted() {
+    // Render once on mount, no watchers to cause loops
     this.renderChart(this.chartData, this.options);
-  },
-  
-  watch: {
-    chartData: {
-      handler() {
-        if (this._chart) {
-          this._chart.destroy();
-        }
-        this.renderChart(this.chartData, this.options);
-      },
-      deep: true
-    }
   }
+  
+  // No watchers - will not auto-update on data changes
+  // Parent must provide a new key to force re-rendering
 }
 </script>

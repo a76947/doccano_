@@ -158,22 +158,91 @@ export default {
   
   computed: {
     chartData() {
-      // Simplify to avoid excessive computation
-      const data = this.stats || { annotated: 0, unannotated: 0, total: 0 };
+      // Use the stats from props
+      const data = this.stats || { total: 0, filtered: 0, annotated: 0, unannotated: 0 };
       
+      // Check if we're filtering by label
+      const hasLabelFilter = this.selectedLabels.length > 0;
+      
+      // Special case for label filtering
+      if (hasLabelFilter && data.filtered !== data.total) {
+        // Create a chart showing documents with the selected label vs all documents
+        const withLabel = data.filtered || 0;
+        const withoutLabel = data.total - withLabel;
+        
+        // Get the label text for display
+        const labelTexts = this.selectedLabels.map(labelVal => {
+          const found = this.availableLabels.find(l => l.value === labelVal);
+          return found ? found.text : labelVal;
+        });
+        
+        console.log('Label filter chart data:', {
+          withLabel,
+          withoutLabel,
+          labelTexts
+        });
+        
+        // Different visualization for label filtering
+        return {
+          labels: [
+            `With ${labelTexts.join(', ')}`,
+            `Without ${labelTexts.join(', ')}`
+          ],
+          datasets: [
+            {
+              backgroundColor: ['#2196F3', '#E0E0E0'], // Blue for label matches
+              data: [withLabel, withoutLabel]
+            }
+          ]
+        };
+      }
+      
+      // Special case for assignee filtering - NEW CODE
+      if (this.selectedAssignee && data.filtered !== data.total && !hasLabelFilter) {
+        // The filtered count is documents assigned to this user
+        const byAssignee = data.filtered || 0;
+        // Total annotated minus those by this assignee = others
+        const byOthers = data.annotated - byAssignee;
+        
+        // Make sure we don't have negative numbers
+        const normalizedByOthers = byOthers < 0 ? 0 : byOthers;
+        
+        console.log('Assignee filter chart data:', {
+          byAssignee,
+          byOthers: normalizedByOthers,
+          totalAnnotated: data.annotated
+        });
+        
+        // Different visualization for assignee filtering
+        return {
+          labels: [
+            `Annotated by ${this.selectedAssignee}`,
+            `Annotated by others`
+          ],
+          datasets: [
+            {
+              backgroundColor: ['#9C27B0', '#E0E0E0'], // Purple for assignee's annotations
+              data: [byAssignee, normalizedByOthers]
+            }
+          ]
+        };
+      }
+      
+      // For annotation type filters, use the existing method
       if (this.annotationTypeFilter) {
         return this.getAnnotationTypeChartData(data);
       }
       
+      // Default: show annotated vs unannotated
       return {
         labels: ['Annotated', 'Pending'],
         datasets: [
           {
             backgroundColor: ['#4CAF50', '#FFC107'],
-            data: [data.annotated || 0, data.unannotated || 0]
+            data: [data.annotated, data.unannotated]
           }
         ]
-      }
+      };
     },
     
     filterActive() {
