@@ -25,7 +25,7 @@
       />
     </v-col>
     <v-col cols="12">
-      <dataset-statistics 
+      <pie-chart-statistics 
         :stats.sync="datasetStats" 
         :loading.sync="loadingStats"
         :project-id="projectId"
@@ -39,13 +39,13 @@
 import { mapGetters } from 'vuex'
 import LabelDistribution from '~/components/metrics/LabelDistribution'
 import MemberProgress from '~/components/metrics/MemberProgress'
-import DatasetStatistics from '~/components/metrics/DatasetStatistics'
+import PieChartStatistics from '~/components/metrics/PieChartStatistics'
 
 export default {
   components: {
     LabelDistribution,
     MemberProgress,
-    DatasetStatistics
+    PieChartStatistics
   },
 
   layout: 'project',
@@ -119,8 +119,17 @@ export default {
     },
 
     onStatsUpdated(newStats) {
-      console.log('Parent received updated stats');
-      this.datasetStats = newStats;
+      console.log('Parent received updated stats', {
+        total: newStats.total,
+        filtered: newStats.filtered,
+        annotated: newStats.annotated
+      });
+      // Create a new object to ensure reactivity
+      this.datasetStats = JSON.parse(JSON.stringify(newStats));
+    },
+
+    functionName() {
+      // code
     }
   }
 }

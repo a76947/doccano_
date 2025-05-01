@@ -35,8 +35,10 @@ export class APIMetricsRepository {
   }
   
   async fetchDatasetStatistics(projectId: string, queryParams: string = '') {
-    const url = `/projects/${projectId}/metrics/dataset${queryParams ? '?' + queryParams : ''}`
-    const response = await this.request.get(url)
-    return response.data
+  // Make sure we're not adding an extra question mark
+    const url = `/projects/${projectId}/metrics/dataset${queryParams}`;
+    console.log('Requesting URL:', url);
+    const response = await this.request.get(url);
+    return response.data;
   }
 }
