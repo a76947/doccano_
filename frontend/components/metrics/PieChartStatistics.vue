@@ -657,7 +657,7 @@ userTotals[user] = Object.values(this.spanDistribution[user]).reduce((sum, count
 
 .chart-container {
   position: relative;
-  height: 280px !important;
+  height: 0px !important;
   width: 100%;
   margin-top: 0px !important;
   margin-bottom: 0px !important;
