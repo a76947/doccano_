@@ -12,7 +12,7 @@
     </v-col>
     <v-col v-if="!!project.canDefineSpan" cols="12">
       <label-distribution
-        title="Span Distribution"
+        title="Label Distribution"
         :distribution="spanDistribution"
         :label-types="spanTypes"
       />
