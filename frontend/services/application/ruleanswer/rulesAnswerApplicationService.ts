@@ -1,10 +1,16 @@
 import { ApiAnswerRepository } from '@/repositories/answerule/answerRuleRepository';
 
 export class AnswerRuleApplicationService {
-    constructor(private readonly repository: ApiAnswerRepository) {}
+    private repository: ApiAnswerRepository;
+    constructor() {
+        this.repository = new ApiAnswerRepository();
+    }
+
+    async listUserAnswers(projectId: string | number, votingSessionId: string | number) {
+        return await this.repository.listUserAnswers(projectId, votingSessionId);
+    }
 
     async list(projectId: string | number, answerSessionId: string | number) {
-        console.log('Entrou no service.list com projectId:', projectId);
         return await this.repository.list(projectId, answerSessionId);
     }
 

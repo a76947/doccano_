@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework import status, permissions
 from projects.models import VotingSession, VotingSessionAnswer
+from projects.serializers import VotingSessionAnswerSerializer
 
 class VotingSessionView(APIView):
     permission_classes = [permissions.IsAuthenticated]
@@ -97,3 +98,19 @@ class VotingSessionAnswerView(APIView):
             "project": session_answer.project.id,
             "created_by": session_answer.created_by.id
         }, status=status.HTTP_201_CREATED)
+    
+class VotingSessionUserAnswersView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, project_id, voting_session_id):
+        user_answers = VotingSessionAnswer.objects.filter(
+            project_id=project_id,
+            voting_session_id=voting_session_id,
+            created_by=request.user
+        )
+        
+        if not user_answers.exists():
+            raise NotFound("No answers found for this user in the specified voting session.")
+        
+        serializer = VotingSessionAnswerSerializer(user_answers, many=True)
+        return Response({"user_answers": serializer.data}, status=status.HTTP_200_OK)

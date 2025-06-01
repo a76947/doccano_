@@ -2,11 +2,16 @@ import ApiService from '@/services/api.service';
 
 export class ApiAnswerRepository {
   async list(projectId: string | number, answerSessionId: string | number) {
-    console.log('aqui no repository voting list()'); // log antes de criar a URL
-    const url = `/projects/${projectId}/votingsessions/${answerSessionId}/answers`; // Adicione o sufixo correto
+    const url = `/projects/${projectId}/votingsessions/${answerSessionId}/answers`;
     console.log('URL construída:', url);
-    const response = await ApiService.get(url);
-    return response.data;
+    try {
+      const response = await ApiService.get(url);
+      console.log('Resposta do GET:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Erro no GET:', error);
+      throw error;
+    }
   }
 
   async createAnswerSession(
@@ -24,5 +29,18 @@ export class ApiAnswerRepository {
     console.log('aqui no repository voting updateSessionFinish() com URL:', url);
     const response = await ApiService.put(url, { finish: true });
     return response;
+  }
+
+  async listUserAnswers(projectId: string | number, votingSessionId: string | number) {
+    const url = `/projects/${projectId}/votingsessions/${votingSessionId}/user-answers`;
+    console.log('URL construída para user answers:', url);
+    try {
+      const response = await ApiService.get(url);
+      console.log('Resposta do GET (user answers):', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Erro no GET de user answers:', error);
+      throw error;
+    }
   }
 }
