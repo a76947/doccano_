@@ -2,9 +2,7 @@ import ApiService from '@/services/api.service';
 
 export class ApiVotingRepository {
   async list(projectId: string | number) {
-    console.log('aqui no repository voting list()'); // log antes de criar a URL
     const url = `/projects/${projectId}/votingsessions`;
-    console.log('URL construída:', url);
     const response = await ApiService.get(url);
     return response.data;
   }

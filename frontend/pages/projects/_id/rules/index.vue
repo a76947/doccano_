@@ -93,6 +93,20 @@
         <v-btn text v-bind="attrs" @click="snackbarError = false">Close</v-btn>
       </template>
     </v-snackbar>
+
+    <!-- Overlay para aviso de regras -->
+    <v-dialog v-model="dialogNoRules" max-width="400px">
+      <v-card>
+        <v-card-title class="headline">Nenhuma Regra Encontrada</v-card-title>
+        <v-card-text>
+          <p>Você precisa adicionar pelo menos uma regra para submeter a votação.</p>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn color="primary" text @click="dialogNoRules = false">Fechar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     
   </v-card>
 </template>
@@ -116,6 +130,7 @@ export default {
       showErrors: false,
       dialogCreateQuestion: false,
       dialogCalendar: false,
+      dialogNoRules: false, // Novo diálogo para aviso de regras
       selectedDate: null,
       selectedTime: null,
       user: {},
@@ -255,10 +270,9 @@ export default {
       this.dialogCalendar = false;
     },
     async createVotingSession() {
-      const voteEndDate = new Date(`${this.selectedDate}T${this.selectedTime}:00Z`).toISOString();
+      const voteEndDate = new Date(`${this.selectedDate}T${this.selectedTime}:00`).toISOString();
       console.log("Vote end date:", voteEndDate);
       const questionsList = this.rules.map(rule => rule.regra ? rule.regra : '');
-      console.log("Questions list:", questionsList);
       try {
         console.log("Criando nova sessão de votação com vote_end_date:", voteEndDate, "e questions:", questionsList);
         const response = await this.$services.voting.createVotingSession(
@@ -270,6 +284,7 @@ export default {
         this.snackbarMessage = "Voting session created successfully!";
         this.snackbar = true;
         
+        // Remover regras após criação da sessão
         for (const rule of this.rules) {
           try {
             await this.$services.rules.deleteRule(this.projectId, rule.id);
@@ -289,6 +304,12 @@ export default {
     confirmCalendar() {
       console.log('Selected date:', this.selectedDate);
       console.log('Selected time:', this.selectedTime);
+      // Verifica se há pelo menos 1 regra para submeter
+      if (!this.rules || this.rules.length === 0) {
+        this.dialogCalendar = false;
+        this.dialogNoRules = true; // Abre o overlay de aviso
+        return;
+      }
       this.createVotingSession();
       this.closeCalendar();
     },

@@ -4,9 +4,9 @@
       Segunda Tabela de Regras
     </v-card-title>
     <v-expansion-panels>
-      <v-expansion-panel v-for="(session, index) in rulesSecondTable" :key="index">
+      <v-expansion-panel v-for="(session, idx) in rulesSecondTable" :key="idx">
         <v-expansion-panel-header>
-          Sessão {{ index + 1 }}
+          Sessão {{ idx + 1 }}
         </v-expansion-panel-header>
         <v-expansion-panel-content>
           <StringTableWithResponse 
@@ -25,6 +25,32 @@
       </v-btn>
     </v-card-actions>
 
+    <!-- Tabela Admin: somente visível para usuários administradores -->
+    <v-card v-if="isAdmin" class="mt-5">
+      <v-card-title>
+        Visualização Administrativa - Todas as Sessões (Regras)
+      </v-card-title>
+      <v-expansion-panels>
+        <v-expansion-panel v-for="sessionAdmin in allSessions" :key="sessionAdmin.id">
+          <v-expansion-panel-header>
+            Sessão {{ sessionAdmin.id }} - 
+            <span v-if="sessionAdmin.finish === false">
+              <v-icon small color="green" class="ml-1">Active</v-icon>
+            </span>
+            <span v-else>
+              <v-icon small color="red" class="ml-1">Finished</v-icon>
+            </span>
+          </v-expansion-panel-header>
+          <v-expansion-panel-content>
+            <StringTableAdmin 
+              :items="sessionAdmin.questions"
+              :loading="loadingAdminTable"
+              @onFinish="() => finalizeSession(sessionAdmin)"
+            />
+          </v-expansion-panel-content>
+        </v-expansion-panel>
+      </v-expansion-panels>
+    </v-card>
 
     <!-- Snackbar para exibir mensagem de sucesso -->
     <v-snackbar v-model="snackbar" timeout="3000" top color="success">
@@ -45,24 +71,54 @@
 
 <script>
 import StringTableWithResponse from '~/components/rules/stringTableWithResponse.vue';
-
+import StringTableAdmin from '~/components/rules/stringTableAdmin.vue';
 export default {
-  components: { StringTableWithResponse },
+  components: { StringTableWithResponse, StringTableAdmin },
   data() {
     return {
       rulesSecondTable: [],
+      allSessions: [], // Armazena todas as sessões para o admin
       loadingSecondTable: true,
+      loadingAdminTable: true,
       validSession: null,
+      user: null,
       snackbar: false,
       snackbarMessage: '',
       snackbarError: false,
       snackbarErrorMessage: '',
     };
   },
+  computed: {
+    isAdmin() {
+      // Retorna true se o usuário existir e for admin.
+      return this.user && this.user.isProjectAdmin;
+    }
+  },
   created() {
+    this.updateExpiredSessions();
     this.fetchRulesSecondTable();
+    this.isAdmin = true; 
+
+    this.fetchUserRole();
   },
   methods: {
+    async updateExpiredSessions() {
+      const projectId = this.$route.params.id;
+      try {
+        const response = await this.$services.voting.list(projectId);
+        const sessions = response.voting_sessions || [];
+        const now = new Date();
+        for (const session of sessions) {
+          const endDate = new Date(session.vote_end_date);
+          if (endDate < now && !session.finish) {
+            await this.$services.voting.updateSessionFinish(projectId, session.id);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao atualizar sessões expiradas:', error);
+      }
+    },
+
     async fetchRulesSecondTable() {
       const projectId = this.$route.params.id;
       try {
@@ -70,11 +126,14 @@ export default {
         const response = await this.$services.voting.list(projectId);
         const sessions = response.voting_sessions || [];
         
+        // Armazena todas as sessões para a visualização do admin
+        this.allSessions = sessions;
+        
         // Para cada sessão, busca as respostas do usuário usando o novo endpoint
         for (const session of sessions) {
           try {
             const userAnswersResp = 
-            await this.$services.answer.listUserAnswers(projectId, session.id);
+              await this.$services.answer.listUserAnswers(projectId, session.id);
             session.userAnswers = userAnswersResp.user_answers;
           } catch (error) {
             console.error(`Erro ao buscar as respostas do usuário para a sessão ${session.id}:`, error);
@@ -85,19 +144,20 @@ export default {
         // Exibe o estado de cada sessão e as respostas do usuário
         for (const session of sessions) {
           if (!session.userAnswers || session.userAnswers.length === 0) {
-                console.log(`Sessão ${session.id} não possui respostas do usuário.`);
-                console.log(`Estado da Sessão ${session.id}:`, session.finish);
-            } else {
-                console.log(`Sessão ${session.id} possui respostas do usuário:`, session.userAnswers);
-                console.log(`Estado da Sessão ${session.id}:`, session.finish);
-            }
+            console.log(`Sessão ${session.id} não possui respostas do usuário.`);
+            console.log(`Estado da Sessão ${session.id}:`, session.finish);
+          } else {
+            console.log(`Sessão ${session.id} possui respostas do usuário:`, session.userAnswers);
+            console.log(`Estado da Sessão ${session.id}:`, session.finish);
+          }
         }
         
+        // Linha quebrada para não exceder o limite de 100 caracteres
+        const activeSessions = sessions.filter(session => 
+          session.finish === false &&
+          (!session.userAnswers || session.userAnswers.length === 0)
+        );
         
-        const activeSessions = sessions.filter(session => session.finish === false && 
-        (!session.userAnswers || session.userAnswers.length === 0));
-        
-
         if (activeSessions.length) {
           this.rulesSecondTable = activeSessions;
           this.validSession = activeSessions[0]; // opcionalmente, usar a primeira sessão ativa
@@ -113,6 +173,7 @@ export default {
         console.error('Erro ao buscar regras da segunda tabela:', error);
       } finally {
         this.loadingSecondTable = false;
+        this.loadingAdminTable = false;
       }
     },
 
@@ -151,9 +212,38 @@ export default {
       }
     },
     
-
     closePage() {
       this.$router.back();
+    },
+
+    async fetchUserRole() {
+      try {
+        // Exemplo: busca o "role" do membro através de um repositório.
+        const member = await this.$repositories.member.fetchMyRole(this.$route.params.id);
+        this.user = member;
+      } catch (error) {
+        console.error("Erro ao buscar o papel do usuário:", error);
+      }
+    },
+    async finalizeSession(session) {
+      const projectId = this.$route.params.id;
+      try {
+        // Atualiza a sessão definindo finish como true
+        await this.$services.voting.updateSessionFinish(projectId, session.id);
+        
+        // Atualiza a sessão localmente (opcional)
+        session.finish = true;
+        
+        this.snackbarMessage = "Sessão finalizada com sucesso!";
+        this.snackbar = true;
+        
+        // Atualiza as tabelas com a sessão atualizada
+        await this.fetchRulesSecondTable();
+      } catch (error) {
+        console.error("Erro ao finalizar a sessão:", error);
+        this.snackbarErrorMessage = "Erro ao finalizar a sessão!";
+        this.snackbarError = true;
+      }
     },
   },
 };
