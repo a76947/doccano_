@@ -78,6 +78,7 @@ class DiscrepancyAnalysisView(APIView):
 
     def get(self, request, project_id):
         project = get_object_or_404(Project, id=project_id)
+        # Valor fixo de discrepância
         discrepancy_threshold = 70
         examples = Example.objects.filter(project_id=project_id)
 
@@ -93,11 +94,15 @@ class DiscrepancyAnalysisView(APIView):
                 percentages = {label['label__text']: (label['count'] / total_labels) * 100 for label in labels}
                 max_percentage = max(percentages.values())
 
-                if max_percentage < discrepancy_threshold:
-                    discrepancies.append({
-                        "id": example.id,
-                        "text": example.text,
-                        "percentages": percentages,
-                    })
+                # Sempre incluir o exemplo, mas marcar se é uma discrepância
+                discrepancies.append({
+                    "id": example.id,
+                    "text": example.text,
+                    "percentages": percentages,
+                    "is_discrepancy": max_percentage < discrepancy_threshold,
+                    "max_percentage": max_percentage
+                })
 
-        return Response({"discrepancies": discrepancies})
+        return Response({
+            "discrepancies": discrepancies
+        })
