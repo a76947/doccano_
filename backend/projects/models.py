@@ -221,6 +221,8 @@ class Member(models.Model):
         unique_together = ("user", "project")
 
 
+
+
 class PerspectiveGroup(models.Model):
     project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='perspective_groups')
     name = models.CharField(max_length=100)
@@ -230,7 +232,6 @@ class PerspectiveGroup(models.Model):
     def __str__(self):
         return self.name
 
-
 class Perspective(models.Model):
     DATA_TYPES = [
         ('int', 'Integer'),
@@ -239,17 +240,27 @@ class Perspective(models.Model):
     ]
 
     project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='perspectives')
-    group = models.ForeignKey('PerspectiveGroup', on_delete=models.CASCADE, 
-                             related_name='questions', null=True)
-    # The name field already exists in the database
+    group = models.ForeignKey(
+        'PerspectiveGroup',
+        on_delete=models.CASCADE,
+        related_name='questions',
+        null=True
+    )
     name = models.CharField(max_length=100)
     question = models.CharField(max_length=100)
     data_type = models.CharField(max_length=20, choices=DATA_TYPES)
-    options = models.JSONField(default=list, blank=True)  # List of options
+    options = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        unique_together = (('group', 'question'),)
+        # ou, em versões mais recentes:
+        # constraints = [
+        #   models.UniqueConstraint(fields=['group','question'], name='unique_question_per_group')
+        # ]
 
     def __str__(self):
         return f"{self.question} ({self.data_type})"
-    
+
 
 class PerspectiveAnswer(models.Model):
     perspective = models.ForeignKey(

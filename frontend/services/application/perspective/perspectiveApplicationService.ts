@@ -32,6 +32,10 @@ export class PerspectiveApplicationService {
     return await this.repository.delete(projectId, questionId)
   }
 
+  async updatePerspective(projectId: string | number, questionId: string | number, data: any) {
+    return await this.repository.update(projectId, questionId, data)
+  }
+
   async listPerspectiveAnswersByQuestion(projectId: string | number, questionId: string | number) {
     return await this.repository.listAnswersByQuestion(projectId, questionId)
   }
@@ -62,6 +66,9 @@ export function usePerspectiveApplicationService() {
 
     deletePerspective: (projectId: string | number, questionId: string | number) => 
       repository.delete(projectId, questionId),
+
+    updatePerspective: (projectId: string | number, questionId: string | number, data: any) => 
+      repository.update(projectId, questionId, data),
 
     listPerspectiveAnswersByQuestion: (projectId: string | number, questionId: string | number) => 
       repository.listAnswersByQuestion(projectId, questionId)
