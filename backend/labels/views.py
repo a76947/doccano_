@@ -41,7 +41,12 @@ class BaseListAPI(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = self.label_class.objects.filter(example=self.kwargs["example_id"])
-        if not self.project.collaborative_annotation:
+
+        # If project is not collaborative, by default we show only the current user's annotations.
+        # However, on some pages (e.g., discrepancy analysis) we may want to retrieve annotations
+        # from *all* users. Pass query param `all=1` to bypass the user filter.
+        view_all = self.request.query_params.get("all") == "1"
+        if not self.project.collaborative_annotation and not view_all:
             queryset = queryset.filter(user=self.request.user)
         return queryset
 
