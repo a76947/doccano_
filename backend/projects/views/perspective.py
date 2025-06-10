@@ -3,11 +3,17 @@ from django.shortcuts import get_object_or_404
 from projects.models import Perspective, Project, PerspectiveAnswer, PerspectiveGroup, Member
 from projects.serializers import PerspectiveSerializer, PerspectiveAnswerSerializer, PerspectiveGroupSerializer
 from django.conf import settings
+from django.db import transaction
+from rest_framework import serializers
+
 
 class PerspectiveViewSet(viewsets.ModelViewSet):
     queryset = Perspective.objects.all()
     serializer_class = PerspectiveSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        instance.delete()
 
 
 class PerspectiveAnswerViewSet(viewsets.ModelViewSet):
@@ -65,4 +71,16 @@ class PerspectiveGroupViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         project_id = self.kwargs.get("project_id")
         project = get_object_or_404(Project, id=project_id)
-        serializer.save(project=project)
+        with transaction.atomic():
+            group = serializer.save(project=project)
+            # Cria a questão inicial baseada no input do usuário
+            initial_question = self.request.data.get('initial_question', {})
+            if initial_question:
+                Perspective.objects.create(
+                    project=project,
+                    group=group,
+                    name=initial_question.get('question', ''),
+                    question=initial_question.get('question', ''),
+                    data_type=initial_question.get('data_type', 'string'),
+                    options=initial_question.get('options', [])
+                )
