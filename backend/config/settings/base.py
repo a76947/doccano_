@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "projects",
     "metrics",
     "users",
+
     "data_import",
     "data_export",
     "auto_labeling",
@@ -72,7 +73,7 @@ INSTALLED_APPS = [
     "health_check.contrib.celery",
     "django_cleanup",
     "todo_api",
-
+    "channels",
 ]
 
 
@@ -91,6 +92,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
 
 # Django templates
 TEMPLATES = [
@@ -302,3 +304,10 @@ SOCIALACCOUNT_PROVIDERS = {
 }
 
 SITE_ID = 1
+
+# Add Channel Layers config (using in-memory for simplicity)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    },
+}

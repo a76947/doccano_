@@ -504,11 +504,15 @@ export default {
       viewingQuestion: null,
       questionResponses: [],
       loadingResponses: false,
+
       responseHeaders: [
         { text: 'Answer', value: 'answer' },
         { text: 'Submitted At', value: 'created_at' }
       ],
       voteCounts: {},
+
+      knownUsers: []
+
     }
   },
 
@@ -943,6 +947,66 @@ export default {
       // Limpa as opções quando muda o tipo
       this.newQuestion.options = [];
     },
+
+    async fetchBasicUserInfo() {
+      try {
+        // Try to get members list if user is admin
+        const response = await this.$axios.get(`/v1/projects/${this.projectId}/members`);
+        if (response.data) {
+          this.knownUsers = response.data.map(member => ({
+            id: member.user,
+            username: member.username || `User ${member.user}`
+          }));
+        }
+      } catch (error) {
+        // If forbidden (normal user), create basic user list from available data
+        console.log("Unable to fetch member list, using basic user info");
+        
+        // Create entries for users we know about
+        this.knownUsers = [
+          // Current user
+          { 
+            id: this.$store.getters.getUserId, 
+            username: this.$store.getters.getUsername || `User ${this.$store.getters.getUserId}`
+          }
+        ];
+        
+        // Add comparison users if they're different from current user
+        if (this.comparisonUsers) {
+          if (this.comparisonUsers.user1 && 
+              this.comparisonUsers.user1 !== this.$store.getters.getUserId) {
+            this.knownUsers.push({
+              id: this.comparisonUsers.user1,
+              username: `User ${this.comparisonUsers.user1}`
+            });
+          }
+          
+          if (this.comparisonUsers.user2 && 
+              this.comparisonUsers.user2 !== this.$store.getters.getUserId) {
+            this.knownUsers.push({
+              id: this.comparisonUsers.user2,
+              username: `User ${this.comparisonUsers.user2}`
+            });
+          }
+        }
+      }
+    },
+
+    // Update the openComparisonDialog method to fetch user info
+    async openComparisonDialog(params) {
+      this.selectedDocumentId = params.documentId;
+      this.comparisonUsers = {
+        user1: params.user1 || this.$store.getters.getUserId,
+        user2: params.user2
+      };
+      
+      // Try to fetch user info before showing the dialog
+      await this.fetchBasicUserInfo();
+      
+      // Now show the dialog
+      this.dialogCompare = true;
+    }
+
   }
 }
 </script>

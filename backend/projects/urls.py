@@ -3,9 +3,14 @@ from rest_framework.routers import DefaultRouter
 
 from .views.perspective import PerspectiveViewSet, PerspectiveGroupViewSet, PerspectiveAnswerViewSet
 from .views.project import DiscrepancyAnalysisView, ProjectList, ProjectDetail, CloneProject
+
+from .views.votacoes import VotacoesView
 from .views.tag import TagList, TagDetail
 from .views.member import MemberList, MemberDetail, MyRole
 from .views.permissions import MyProjectPermissions  # Import from the new file
+from .views.annotation import UserAnnotationsAPI
+from .views.chat import ChatMessagesView
+
 
 # Create router for ViewSets
 router = DefaultRouter()
@@ -30,5 +35,11 @@ urlpatterns = [
     path('projects/<int:project_id>/my-permissions/', MyProjectPermissions.as_view(), name='my-project-permissions'),
 
 
+
     path("projects/<int:project_id>/discrepacies", DiscrepancyAnalysisView.as_view(), name="discrepancy_analysis"),
+
+    path('projects/<int:project_id>/annotations', UserAnnotationsAPI.as_view(), name='user_annotations'),
+    path("projects/<int:project_id>/votacoes", VotacoesView.as_view(), name="votacoes"),
+    path("projects/<int:project_id>/chat", ChatMessagesView.as_view(), name="chat_messages"),
+
 ]
