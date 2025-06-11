@@ -2,10 +2,35 @@
   <v-card>
     <v-card-title class="d-flex justify-space-between align-center">
       <span class="text-h6">Perfis de Utilizador</span>
-      <v-btn color="primary" dark @click="dialog = true">
-        Criar Grupo
-      </v-btn>
+      <div>
+        <v-btn
+          class="text-capitalize ms-2"
+          :disabled="!selectedGroups.length"
+          color="error"
+          @click="confirmDelete"
+        >
+          Apagar ({{ selectedGroups.length }})
+        </v-btn>
+        <v-btn color="primary" dark @click="dialog = true">
+          Criar Grupo
+        </v-btn>
+      </div>
     </v-card-title>
+
+    <v-dialog v-model="dialogDelete" max-width="400px">
+      <v-card>
+        <v-card-title class="headline">Confirmar Exclusão</v-card-title>
+        <v-card-text>
+          Tem certeza que deseja excluir {{ selectedGroups.length }} grupo(s)?
+          Esta ação não pode ser desfeita.
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="dialogDelete = false">Cancelar</v-btn>
+          <v-btn color="error" text @click="deleteGroups">Confirmar</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-dialog v-model="dialog" max-width="600px">
       <v-card>
@@ -34,31 +59,44 @@
       </v-card>
     </v-dialog>
 
-    <v-list two-line>
-      <v-list-item v-for="group in groups" :key="group.id" class="border-b">
-        <v-list-item-content>
-          <v-list-item-title>
-            <span class="text-subtitle-2 text--secondary">ID: {{ group.id }}</span><br />
-            {{ group.name }}
-          </v-list-item-title>
+    <div class="pa-4">
+      <v-card 
+        v-for="group in groups" 
+        :key="group.id" 
+        class="mb-4 elevation-2"
+        :class="{ 'selected-group': selectedGroups.some(g => g.id === group.id) }"
+        @click="toggleGroupSelection(group)"
+      >
+        <v-card-title class="d-flex align-center justify-space-between">
+          <v-checkbox
+            :input-value="selectedGroups.some(g => g.id === group.id)"
+            @click.stop
+            @change="toggleGroupSelection(group)"
+            hide-details
+            class="mr-2"
+          ></v-checkbox>
+          <span class="text-subtitle-1 text--secondary">ID: {{ group.id }}</span>
+        </v-card-title>
+        <v-card-subtitle class="pt-0">
+          <span class="text-h6">{{ group.name }}</span>
+        </v-card-subtitle>
 
-          <v-list-item-subtitle>
-            <v-chip-group column>
-              <v-chip
-                v-for="perm in group.permissions"
-                :key="perm.id"
-                class="ma-1 permission-chip"
-                small
-                outlined
-              >
-                <v-icon left>{{ getPermissionIcon(perm.codename) }}</v-icon>
-                {{ perm.name }}
-              </v-chip>
-            </v-chip-group>
-          </v-list-item-subtitle>
-        </v-list-item-content>
-      </v-list-item>
-    </v-list>
+        <v-card-text>
+          <div class="d-flex flex-wrap gap-2">
+            <v-chip
+              v-for="perm in group.permissions"
+              :key="perm.id"
+              class="permission-chip"
+              small
+            >
+              <v-icon left small v-if="getPermissionIcon(perm.codename)">
+                {{ getPermissionIcon(perm.codename) }}</v-icon>
+              {{ perm.name }}
+            </v-chip>
+          </div>
+        </v-card-text>
+      </v-card>
+    </div>
   </v-card>
 </template>
 
@@ -73,16 +111,24 @@ type Permission = {
   content_type: string
 }
 
+type Group = {
+  id: number
+  name: string
+  permissions: Permission[]
+}
+
 export default Vue.extend({
   layout: 'projects',
   middleware: ['check-auth', 'auth'],
 
   data() {
     return {
-      groups: [],
+      groups: [] as Group[],
       isLoading: false,
       dialog: false,
+      dialogDelete: false,
       allPermissions: [] as Permission[],
+      selectedGroups: [] as Group[],
 
       newGroup: {
         name: '',
@@ -112,6 +158,36 @@ export default Vue.extend({
   },
 
   methods: {
+    toggleGroupSelection(group: Group) {
+      const index = this.selectedGroups.findIndex(g => g.id === group.id)
+      if (index === -1) {
+        this.selectedGroups.push(group)
+      } else {
+        this.selectedGroups.splice(index, 1)
+      }
+    },
+
+    confirmDelete() {
+      if (this.selectedGroups.length > 0) {
+        this.dialogDelete = true
+      }
+    },
+
+    async deleteGroups() {
+      try {
+        await Promise.all(
+          this.selectedGroups.map(group => 
+            this.$axios.delete(`/v1/groups/${group.id}/delete/`)
+          )
+        )
+        this.dialogDelete = false
+        this.selectedGroups = []
+        this.$fetch()
+      } catch (err) {
+        console.error('Erro ao excluir grupos:', err)
+      }
+    },
+
     async createGroup() {
       try {
         const payload = {
@@ -141,14 +217,22 @@ export default Vue.extend({
 </script>
 
 <style scoped>
+.gap-2 {
+  gap: 0.5rem;
+}
+
+.selected-group {
+  border: 2px solid var(--v-primary-base);
+}
+
 .permission-chip {
-  border-color: #2196f3;
-  color: #2196f3;
-  transition: all 0.2s ease-in-out;
+  background-color: #E3F2FD !important; /* blue lighten-5 */
+  color: #0D47A1 !important; /* blue darken-4 */
+  transition: background-color 0.2s ease-in-out;
 }
 
 .permission-chip:hover {
-  background-color: #2196f3 !important;
-  color: white !important;
+  background-color: #BBDEFB !important; /* blue lighten-4, slightly darker */
+  color: #0D47A1 !important; /* Keep original text color */
 }
 </style>
