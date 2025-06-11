@@ -1,4 +1,6 @@
 import { Plugin } from '@nuxt/types'
+
+// Importa os repositórios existentes
 import { APIAssignmentRepository } from '@/repositories/example/apiAssignmentRepository'
 import { APIAuthRepository } from '@/repositories/auth/apiAuthRepository'
 import { APIConfigRepository } from '@/repositories/autoLabeling/config/apiConfigRepository'
@@ -24,6 +26,11 @@ import { APICatalogRepository } from '@/repositories/upload/apiCatalogRepository
 import { APIParseRepository } from '@/repositories/upload/apiParseRepository'
 import { APIUserRepository } from '@/repositories/user/apiUserRepository'
 import { APISegmentationRepository } from '~/repositories/tasks/apiSegmentationRepository'
+
+// IMPORTA O TEU NOVO REPOSITÓRIO
+import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
+import { ApiDiscrepancieRepository } from '~/repositories/discrepancies/apiDiscrepancieRepository'
+
 export interface Repositories {
   // User
   auth: APIAuthRepository
@@ -67,6 +74,10 @@ export interface Repositories {
   textLabel: APITextLabelRepository
   boundingBox: APIBoundingBoxRepository
   segmentation: APISegmentationRepository
+
+  // Perspective
+  perspective: ApiPerspectiveRepository
+  discrepancy: ApiDiscrepancieRepository // Add this line
 }
 
 declare module 'vue/types/vue' {
@@ -117,7 +128,12 @@ const repositories: Repositories = {
   relation: new APIRelationRepository(),
   textLabel: new APITextLabelRepository(),
   boundingBox: new APIBoundingBoxRepository(),
-  segmentation: new APISegmentationRepository()
+  segmentation: new APISegmentationRepository(),
+
+  // Perspective
+  perspective: {} as ApiPerspectiveRepository // Will be replaced in services.ts
+  ,
+  discrepancy: new ApiDiscrepancieRepository()
 }
 
 const plugin: Plugin = (_, inject) => {

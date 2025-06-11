@@ -1,7 +1,7 @@
-from django.urls import path
-
-from .views import TaskStatus
+from django.urls import path, include
 
 urlpatterns = [
-    path(route="tasks/status/<task_id>", view=TaskStatus.as_view(), name="task_status"),
+    # Todo o "v1" fica dentro de users.urls
+    path("v1/", include("backend.users.urls")),
+    path("v2/", include("perfis.urls")),
 ]
