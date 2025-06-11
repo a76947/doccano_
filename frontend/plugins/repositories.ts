@@ -144,7 +144,7 @@ const repositories: Repositories = {
   perspective: {} as ApiPerspectiveRepository // Will be replaced in services.ts
   ,
   discrepancy: new ApiDiscrepancieRepository()
-
+,
   // Annotation
   annotation: new APIAnnotationRepository()
 
