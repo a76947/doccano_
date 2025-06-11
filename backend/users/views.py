@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from projects.models import Project
-from .serializers import UserSerializer
+from .serializers import UserSerializer, CustomRegisterSerializer
 from projects.permissions import IsProjectAdmin
 from dj_rest_auth.registration.serializers import RegisterSerializer
 

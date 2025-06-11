@@ -25,15 +25,6 @@
         >
           {{ $t('generic.delete') }}
         </v-btn>
-        <v-dialog v-model="dialogDelete" width="400">
-          <form-delete
-            :selected="selected"
-            :current-user="currentUser"
-            :has-projects="hasSelectedUserWithProjects"
-            @cancel="dialogDelete = false"
-            @remove="remove"
-          />
-        </v-dialog>
       </v-card-title>
 
       <!-- ✅ Mensagem de erro com transição fade -->
@@ -59,43 +50,28 @@
         </div>
       </transition>
 
-      <v-btn
-        class="text-capitalize ms-2"
-        :disabled="!canDelete"
-        outlined
-        @click.stop="dialogDelete = true"
-      >
-        {{ $t('generic.delete') }}
-      </v-btn>
+      <!-- LISTA DE USUÁRIOS -->
+      <users-list
+        v-if="!isLoading && users.items.length > 0"
+        v-model="selected"
+        :items="users.items"
+        :is-loading="isLoading"
+        :total="users.items.length"
+        @update:query="updateQuery"
+        @input="onSelectionChange"
+      />
+    </v-card>
 
-      <!-- Diálogo de remoção -->
-      <v-dialog v-model="dialogDelete" width="400">
-        <form-delete
-          :selected="selected"
-          @cancel="dialogDelete = false"
-          @remove="remove"
-        />
-      </v-dialog>
-    </v-card-title>
-
-    <!-- Mensagem de sucesso (snackbar) com transição fade -->
-    <transition name="fade">
-      <div v-if="showSnackbar" class="success-message">
-        <v-icon small class="mr-2" color="success">mdi-check-circle</v-icon>
-        {{ successMessage }}
-      </div>
-    </transition>
-
-    <!-- LISTA DE USUÁRIOS -->
-    <users-list
-      v-if="!isLoading && users.items.length > 0"
-      v-model="selected"
-      :items="users.items"
-      :is-loading="isLoading"
-      :total="users.items.length"
-      @update:query="updateQuery"
-      @input="onSelectionChange"
-    />
+    <!-- Diálogo de remoção -->
+    <v-dialog v-model="dialogDelete" width="400">
+      <form-delete
+        :selected="selected"
+        :current-user="currentUser"
+        :has-projects="hasSelectedUserWithProjects"
+        @cancel="dialogDelete = false"
+        @remove="remove"
+      />
+    </v-dialog>
 
     <!-- DIÁLOGO DE EDIÇÃO -->
     <v-dialog v-model="dialogEdit" max-width="600px">
@@ -108,7 +84,7 @@
         />
       </v-card>
     </v-dialog>
-  </v-card>
+  </div>
 </template>
 
 <script lang="ts">
