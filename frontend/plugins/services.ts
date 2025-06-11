@@ -9,7 +9,13 @@ import { BoundingBoxApplicationService } from '@/services/application/tasks/boun
 import { SegmentationApplicationService } from '@/services/application/tasks/segmentation/segmentationApplicationService'
 import { SequenceLabelingApplicationService } from '@/services/application/tasks/sequenceLabeling/sequenceLabelingApplicationService'
 import { UserApplicationService } from '~/services/application/user/userAplicationService'
+import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
+import { PerspectiveApplicationService } from '@/services/application/perspective/perspectiveApplicationService'
 
+import { DiscrepacieApplicationService } from '@/services/application/descrepancys/discrepanciesApplicationService'
+// Update with perspective property
+
+import { AnnotationApplicationService } from '@/services/application/annotation/annotationApplicationService'
 
 export interface Services {
   categoryType: LabelApplicationService
@@ -23,6 +29,12 @@ export interface Services {
   tag: TagApplicationService
   bbox: BoundingBoxApplicationService
   segmentation: SegmentationApplicationService
+
+  perspective: PerspectiveApplicationService 
+  discrepancy: DiscrepacieApplicationService
+
+  annotation: AnnotationApplicationService
+
 }
 
 declare module 'vue/types/vue' {
@@ -30,6 +42,8 @@ declare module 'vue/types/vue' {
     readonly $services: Services
   }
 }
+
+repositories.perspective = new ApiPerspectiveRepository()
 
 const plugin: Plugin = (_, inject) => {
   const services: Services = {
@@ -46,7 +60,11 @@ const plugin: Plugin = (_, inject) => {
     tag: new TagApplicationService(repositories.tag),
     bbox: new BoundingBoxApplicationService(repositories.boundingBox),
     segmentation: new SegmentationApplicationService(repositories.segmentation),
-    user: new UserApplicationService(repositories.user)
+    user: new UserApplicationService(repositories.user),
+
+    perspective: new PerspectiveApplicationService(repositories.perspective), // Add this line
+    discrepancy: new DiscrepacieApplicationService(repositories.discrepancy), // Add this line
+    annotation: new AnnotationApplicationService(repositories.annotation)
   }
   inject('services', services)
 }

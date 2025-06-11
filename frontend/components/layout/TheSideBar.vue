@@ -37,7 +37,9 @@ import {
   mdiDatabase,
   mdiHome,
   mdiLabel,
-  mdiPlayCircleOutline
+  mdiPlayCircleOutline,
+  mdiViewDashboard,
+  mdiAlertCircleOutline
 } from '@mdi/js'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
@@ -117,11 +119,38 @@ export default {
           link: 'metrics',
           isVisible: this.isProjectAdmin
         },
+
+        {
+          icon: mdiViewDashboard,
+          text: 'Perspetivas',
+          link: 'perspectives',
+          isVisible: this.isProjectAdmin
+        },
+
+        {
+          icon: mdiDatabase,
+          text: 'Perspetivas',
+          link: 'perspectives',
+          isVisible: !this.isProjectAdmin// modificar
+        },
+        {
+          icon: mdiAlertCircleOutline,
+          text: 'Discrepâncias',
+          link: 'discrepancies',
+          isVisible: this.isProjectAdmin
+        },
+
         {
           icon: mdiCog,
           text: this.$t('settings.title'),
           link: 'settings',
           isVisible: this.isProjectAdmin
+        },
+        {
+          icon: mdiChartBar,
+          text: 'Votações',
+          link: 'votacoes',
+          isVisible: true
         }
       ]
       return items.filter((item) => item.isVisible)

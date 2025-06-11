@@ -5,8 +5,11 @@ import { APISpanRepository } from '@/repositories/tasks/apiSpanRepository'
 import { APIRelationRepository } from '@/repositories/tasks/apiRelationRepository'
 import { Span } from '@/domain/models/tasks/span'
 import { Relation } from '@/domain/models/tasks/relation'
+import ApiService from '@/services/api.service'
 
 export class SequenceLabelingApplicationService extends AnnotationApplicationService<Span> {
+  private readonly request = ApiService;
+
   constructor(
     readonly repository: APISpanRepository,
     readonly relationRepository: APIRelationRepository
@@ -82,5 +85,42 @@ export class SequenceLabelingApplicationService extends AnnotationApplicationSer
     const relation = await this.relationRepository.find(projectId, exampleId, relationId)
     relation.changeType(typeId)
     await this.relationRepository.update(projectId, exampleId, relationId, relation)
+  }
+
+  public async getAnnotationsByUser(
+    projectId: string | number, 
+    docId: string | number, 
+    userId: string | number
+  ): Promise<any[]> {
+    const url = `/projects/${projectId}/annotations?doc_id=${docId}&user_id=${userId}`
+    const response = await this.request.get(url)
+    
+    // Check if the response has the expected format
+    if (response.data && response.data.annotations) {
+      return response.data.annotations
+    }
+    
+    // If it's a direct array, return it
+    if (Array.isArray(response.data)) {
+      return response.data
+    }
+    
+    // Fallback to empty array
+    return []
+  }
+
+  public async compareAnnotations(
+    projectId: string | number, 
+    docId: string | number, 
+    user1Id: string | number, 
+    user2Id: string | number
+  ): Promise<{ user1: any[], user2: any[] }> {
+    const user1Annotations = await this.getAnnotationsByUser(projectId, docId, user1Id)
+    const user2Annotations = await this.getAnnotationsByUser(projectId, docId, user2Id)
+    
+    return {
+      user1: user1Annotations,
+      user2: user2Annotations
+    }
   }
 }

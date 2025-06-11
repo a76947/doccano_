@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 from projects.models import Project
-from .serializers import UserSerializer
+from .serializers import UserSerializer, CustomRegisterSerializer
 from projects.permissions import IsProjectAdmin
 from dj_rest_auth.registration.serializers import RegisterSerializer
 
@@ -48,7 +48,7 @@ class Users(generics.ListAPIView):
     search_fields = ("auth_user",)
 
 class UserCreation(generics.CreateAPIView):
-    serializer_class = RegisterSerializer
+    serializer_class = CustomRegisterSerializer
     permission_classes = [IsAuthenticated & IsAdminUser]
 
     def create(self, request, *args, **kwargs):
@@ -56,7 +56,16 @@ class UserCreation(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
-        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED, headers=headers)
+        
+        # user pode vir como (user,) se o serializer retornar tupla
+        if isinstance(user, tuple):
+            user = user[0]
+        
+        return Response(
+            UserSerializer(user).data,
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
 
     def perform_create(self, serializer):
         user = serializer.save(self.request)

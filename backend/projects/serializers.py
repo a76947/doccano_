@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from rest_polymorphic.serializers import PolymorphicSerializer
+from rest_framework import serializers
+from django.db import IntegrityError
+from .models import Perspective
 
 from .models import (
     BoundingBoxProject,
@@ -14,6 +17,9 @@ from .models import (
     Speech2textProject,
     Tag,
     TextClassificationProject,
+    Perspective,
+    PerspectiveAnswer,
+    PerspectiveGroup,
 )
 
 
@@ -146,3 +152,71 @@ class ProjectPolymorphicSerializer(PolymorphicSerializer):
         Project: ProjectSerializer,
         **{cls.Meta.model: cls for cls in ProjectSerializer.__subclasses__()},
     }
+
+        
+class PerspectiveSerializer(serializers.ModelSerializer):
+    options = serializers.ListField(
+        child=serializers.CharField(), required=False, allow_empty=True
+    )
+
+    class Meta:
+        model = Perspective
+        fields = ['id', 'name', 'question', 'data_type', 'options', 'group', 'project']
+        read_only_fields = ['id']
+
+    def validate(self, attrs):
+        group = attrs.get('group') or getattr(self.instance, 'group', None)
+        question = attrs.get('question')
+        if group and question:
+            exists = Perspective.objects.filter(group=group, question=question)
+            if self.instance:
+                exists = exists.exclude(pk=self.instance.pk)
+            if exists.exists():
+                raise serializers.ValidationError({
+                    'question': 'Já existe uma pergunta com este texto neste grupo.'
+                })
+        return attrs
+
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except IntegrityError:
+            raise serializers.ValidationError({
+                'question': 'Já existe uma pergunta com este texto neste grupo.'
+            })
+        
+
+class PerspectiveGroupSerializer(serializers.ModelSerializer):
+    questions = PerspectiveSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = PerspectiveGroup
+        fields = ['id', 'name', 'description', 'questions', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+class PerspectiveAnswerSerializer(serializers.ModelSerializer):
+    created_by_username = serializers.SerializerMethodField()
+    # If there's no created_at field, you can add a method field to return current time
+    created_at = serializers.SerializerMethodField(required=False)
+    
+    class Meta:
+        model = PerspectiveAnswer
+        fields = [
+            'id', 'perspective', 'project', 'answer', 
+            'created_by', 'created_by_username', 'created_at'
+        ]
+    
+    def get_created_by_username(self, obj):
+        if obj.created_by:
+            return obj.created_by.username
+        return None
+    
+    def get_created_at(self, obj):
+        # If your model has a different timestamp field, use that
+        if hasattr(obj, 'created_date'):
+            return obj.created_date
+        if hasattr(obj, 'timestamp'):
+            return obj.timestamp
+        # Otherwise return current time
+        from django.utils import timezone
+        return timezone.now()

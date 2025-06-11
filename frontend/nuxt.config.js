@@ -22,6 +22,7 @@ export default {
   },
 
   server: {
+    port: 3000,
     host: '0.0.0.0' // default: localhost
   },
 
@@ -102,9 +103,17 @@ export default {
   },
 
   proxy: {
-    // Use a fake value for use at build-time
+    '/ws': {
+      target: 'http://localhost:8000', // Django server address
+      ws: true, // Enable WebSocket proxying
+      changeOrigin: true
+    },
     '/v1/': {
       target: process.env.API_URL || 'http://127.0.0.1:8000'
+    },
+    '/v1': {
+      target: 'http://localhost:8000', // Django server address
+      changeOrigin: true
     },
     '/media': {
       target: process.env.API_URL || 'http://127.0.0.1:8000'
@@ -153,6 +162,7 @@ export default {
      ** You can extend webpack config here
      */
     publicPath: process.env.PUBLIC_PATH || '/_nuxt/',
+    transpile: ['@flatten-js/core'],
     extend(config, _) {
       // config.module.rules.push({
       //   test: /\.(txt|csv|conll|jsonl)$/i,
