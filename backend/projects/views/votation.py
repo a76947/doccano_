@@ -105,12 +105,11 @@ class VotingSessionUserAnswersView(APIView):
     def get(self, request, project_id, voting_session_id):
         user_answers = VotingSessionAnswer.objects.filter(
             project_id=project_id,
-            voting_session_id=voting_session_id,
-            created_by=request.user
+            voting_session_id=voting_session_id
         )
         
         if not user_answers.exists():
-            raise NotFound("No answers found for this user in the specified voting session.")
+            return Response({"user_answers": []}, status=status.HTTP_200_OK)
         
         serializer = VotingSessionAnswerSerializer(user_answers, many=True)
         return Response({"user_answers": serializer.data}, status=status.HTTP_200_OK)

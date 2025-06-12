@@ -33,6 +33,10 @@
       <v-btn color="primary" class="ml-2" @click="goToVoteRules">
         Vote Rules
       </v-btn>
+      <!-- Novo botão para visualizar regras votadas -->
+      <v-btn color="info" class="ml-2" @click="goToVotedRules">
+        View Voted Rules
+      </v-btn>
     </div>
 
     <!-- Overlay para criar uma pergunta -->
@@ -319,6 +323,12 @@ export default {
     goToVoteRules() {
       // Redireciona para a página voteRules, preservando o parâmetro id do projeto.
       this.$router.push({ path: `/projects/${this.projectId}/rules/voteRules` });
+    },
+    goToVotedRules() {
+      // Redireciona para a nova página de resultados das votações
+      this.$router.push({ 
+        path: `/projects/${this.projectId}/rules/votedResults`
+      });
     },
   },
 };
