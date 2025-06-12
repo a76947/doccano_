@@ -39,27 +39,42 @@
       </v-card-text>
 
       <!-- ✅ Mensagem de erro com transição fade -->
-      <transition name="fade">
-        <v-alert
-          v-if="errorMessage"
-          type="error"
-          class="ma-4"
-          elevation="2"
-          style="background-color: #fdecea; color: #b71c1c; border-left: 4px solid #b71c1c;"
-          dense
-        >
-          <v-icon left color="error">mdi-alert-circle</v-icon>
-          {{ errorMessage }}
-        </v-alert>
-      </transition>
+      <v-snackbar
+        v-model="showErrorSnackbar"
+        color="error"
+        timeout="3000"
+        top
+      >
+        {{ errorMessage }}
+        <template v-slot:action="{ attrs }">
+          <v-btn
+            text
+            v-bind="attrs"
+            @click="showErrorSnackbar = false"
+          >
+            Close
+          </v-btn>
+        </template>
+      </v-snackbar>
 
       <!-- ✅ Mensagem de sucesso com transição fade -->
-      <transition name="fade">
-        <div v-if="showSnackbar" class="success-message">
-          <v-icon small class="mr-2" color="success">mdi-check-circle</v-icon>
-          {{ successMessage }}
-        </div>
-      </transition>
+      <v-snackbar
+        v-model="showSnackbar"
+        color="success"
+        timeout="3000"
+        top
+      >
+        {{ successMessage }}
+        <template v-slot:action="{ attrs }">
+          <v-btn
+            text
+            v-bind="attrs"
+            @click="showSnackbar = false"
+          >
+            Close
+          </v-btn>
+        </template>
+      </v-snackbar>
 
       <!-- LISTA DE PERFIS -->
       <v-data-table
@@ -76,7 +91,7 @@
         }"
       >
         <template #[`item.name`]="{ item }">
-          Nome do perfil: {{ item.name }}
+          {{ item.name }}
         </template>
 
         <template #[`item.permissions`]="{ item }">
@@ -121,12 +136,12 @@
     <v-dialog v-model="dialog" max-width="600px">
       <v-card>
         <v-card-title>
-          <span class="text-h6">Novo Perfil</span>
+          <span class="text-h6">New Profile</span>
         </v-card-title>
         <v-card-text>
           <v-text-field
             v-model="newGroup.name"
-            label="Nome do Perfil"
+            label="Profile Name"
             required
             :error-messages="nameError"
             @input="nameError = ''"
@@ -136,7 +151,7 @@
             :items="allPermissions"
             item-text="name"
             item-value="id"
-            label="Permissões"
+            label="Permissions"
             multiple
             chips
             deletable-chips
@@ -147,8 +162,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="closeDialog">Cancelar</v-btn>
-          <v-btn color="primary" @click="createGroup">Criar</v-btn>
+          <v-btn text @click="closeDialog">Cancel</v-btn>
+          <v-btn color="primary" @click="createGroup">Create</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -157,12 +172,12 @@
     <v-dialog v-model="dialogEdit" max-width="600px">
       <v-card v-if="selectedGroupForEdit">
         <v-card-title>
-          <span class="text-h6">Editar Perfil</span>
+          <span class="text-h6">Edit Profile</span>
         </v-card-title>
         <v-card-text>
           <v-text-field
             v-model="selectedGroupForEdit.name"
-            label="Nome do Perfil"
+            label="Profile Name"
             required
             :error-messages="nameError"
             @input="nameError = ''"
@@ -172,7 +187,7 @@
             :items="allPermissions"
             item-text="name"
             item-value="id"
-            label="Permissões"
+            label="Permissions"
             multiple
             chips
             deletable-chips
@@ -183,8 +198,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="closeEditDialog">Cancelar</v-btn>
-          <v-btn color="primary" @click="saveEditedGroup">Salvar</v-btn>
+          <v-btn text @click="closeEditDialog">Cancel</v-btn>
+          <v-btn color="primary" @click="saveEditedGroup">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -238,6 +253,7 @@ export default Vue.extend({
       errorMessage: '',
       successMessage: '',
       showSnackbar: false,
+      showErrorSnackbar: false,
       search: '',
       mdiMagnify,
       selectedGroupForEdit: null as Group | null,
@@ -320,7 +336,8 @@ export default Vue.extend({
       } catch (err) {
         console.error('Erro ao excluir perfis:', err)
         this.errorMessage = 'Erro ao excluir perfis'
-        setTimeout(() => (this.errorMessage = ''), 3000)
+        this.showErrorSnackbar = true
+        setTimeout(() => (this.showErrorSnackbar = false), 3000)
       }
     },
 
@@ -336,12 +353,12 @@ export default Vue.extend({
       let isValid = true
 
       if (!this.newGroup.name.trim()) {
-        this.nameError = 'O nome do perfil é obrigatório'
+        this.nameError = 'Profile name is required'
         isValid = false
       }
 
       if (this.newGroup.permissions.length === 0) {
-        this.permissionsError = 'Selecione pelo menos uma permissão'
+        this.permissionsError = 'Select at least one permission'
         isValid = false
       }
 
@@ -360,14 +377,21 @@ export default Vue.extend({
         }
         await (this as unknown as VueWithAxios).$axios.post('/v1/groups/create/', payload)
         this.closeDialog()
-        this.successMessage = 'Perfil criado com sucesso!'
+        this.successMessage = 'Profile created successfully!'
         this.showSnackbar = true
         setTimeout(() => (this.showSnackbar = false), 3000)
         this.$fetch()
       } catch (err: any) {
-        console.error('Erro ao criar perfil:', err)
+        console.error('Error creating profile:', err)
         if (err.response?.data?.name) {
           this.nameError = err.response.data.name[0]
+          this.errorMessage = 'A profile with this name already exists'
+          this.showErrorSnackbar = true
+          setTimeout(() => (this.showErrorSnackbar = false), 3000)
+        } else {
+          this.errorMessage = 'Error creating profile'
+          this.showErrorSnackbar = true
+          setTimeout(() => (this.showErrorSnackbar = false), 3000)
         }
       }
     },
@@ -404,11 +428,11 @@ export default Vue.extend({
       // Basic validation for the edited group
       let isValid = true
       if (!this.selectedGroupForEdit.name.trim()) {
-        this.nameError = 'O nome do perfil é obrigatório'
+        this.nameError = 'Profile name is required'
         isValid = false
       }
       if (this.selectedGroupForEdit.permissions.length === 0) {
-        this.permissionsError = 'Selecione pelo menos uma permissão'
+        this.permissionsError = 'Select at least one permission'
         isValid = false
       }
       if (!isValid) return
@@ -420,14 +444,21 @@ export default Vue.extend({
         }
         await (this as unknown as VueWithAxios).$axios.put(`/v1/groups/${this.selectedGroupForEdit.id}/`, payload)
         this.closeEditDialog()
-        this.successMessage = 'Perfil editado com sucesso!'
+        this.successMessage = 'Profile updated successfully!'
         this.showSnackbar = true
         setTimeout(() => (this.showSnackbar = false), 3000)
         this.$fetch()
       } catch (err: any) {
-        console.error('Erro ao editar perfil:', err)
+        console.error('Error updating profile:', err)
         if (err.response?.data?.name) {
           this.nameError = err.response.data.name[0]
+          this.errorMessage = 'A profile with this name already exists'
+          this.showErrorSnackbar = true
+          setTimeout(() => (this.showErrorSnackbar = false), 3000)
+        } else {
+          this.errorMessage = 'Error updating profile'
+          this.showErrorSnackbar = true
+          setTimeout(() => (this.showErrorSnackbar = false), 3000)
         }
       }
     }
