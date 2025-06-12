@@ -38,7 +38,13 @@
           <span class="text-h6">Novo Grupo</span>
         </v-card-title>
         <v-card-text>
-          <v-text-field v-model="newGroup.name" label="Nome do Grupo" required />
+          <v-text-field 
+            v-model="newGroup.name" 
+            label="Nome do Grupo" 
+            required 
+            :error-messages="nameError"
+            @input="nameError = ''"
+          />
           <v-autocomplete
             v-model="newGroup.permissions"
             :items="allPermissions"
@@ -49,11 +55,13 @@
             chips
             deletable-chips
             return-object
+            :error-messages="permissionsError"
+            @change="permissionsError = ''"
           />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="dialog = false">Cancelar</v-btn>
+          <v-btn text @click="closeDialog">Cancelar</v-btn>
           <v-btn color="primary" @click="createGroup">Criar</v-btn>
         </v-card-actions>
       </v-card>
@@ -129,6 +137,8 @@ export default Vue.extend({
       dialogDelete: false,
       allPermissions: [] as Permission[],
       selectedGroups: [] as Group[],
+      nameError: '',
+      permissionsError: '',
 
       newGroup: {
         name: '',
@@ -188,19 +198,48 @@ export default Vue.extend({
       }
     },
 
+    closeDialog() {
+      this.dialog = false
+      this.newGroup.name = ''
+      this.newGroup.permissions = []
+      this.nameError = ''
+      this.permissionsError = ''
+    },
+
+    validateGroup() {
+      let isValid = true
+      
+      if (!this.newGroup.name.trim()) {
+        this.nameError = 'O nome do grupo é obrigatório'
+        isValid = false
+      }
+
+      if (this.newGroup.permissions.length === 0) {
+        this.permissionsError = 'Selecione pelo menos uma permissão'
+        isValid = false
+      }
+
+      return isValid
+    },
+
     async createGroup() {
+      if (!this.validateGroup()) {
+        return
+      }
+
       try {
         const payload = {
-          name: this.newGroup.name,
+          name: this.newGroup.name.trim(),
           permissions: this.newGroup.permissions.map(p => p.id)
         }
         await this.$axios.post('/v1/groups/create/', payload)
-        this.dialog = false
-        this.newGroup.name = ''
-        this.newGroup.permissions = []
+        this.closeDialog()
         this.$fetch()
-      } catch (err) {
+      } catch (err: any) {
         console.error('Erro ao criar grupo:', err)
+        if (err.response?.data?.name) {
+          this.nameError = err.response.data.name[0]
+        }
       }
     },
     getPermissionIcon(codename: string) {
