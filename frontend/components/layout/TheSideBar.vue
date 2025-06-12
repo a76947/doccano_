@@ -139,6 +139,12 @@ export default {
           link: 'discrepancies',
           isVisible: this.isProjectAdmin
         },
+        {
+          icon: mdiChartBar,
+          text: 'Estatísticas de Anotações',
+          link: 'annotation-statistics',
+          isVisible: true
+        },
 
         {
           icon: mdiCog,
