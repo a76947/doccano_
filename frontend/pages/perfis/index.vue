@@ -1,27 +1,112 @@
 <template>
-  <v-card>
-    <v-card-title class="d-flex justify-space-between align-center">
-      <span class="text-h6">Perfis de Utilizador</span>
-      <div>
+  <div>
+    <v-card>
+      <v-card-title v-if="isStaff">
+        <v-btn
+          class="text-capitalize"
+          color="primary"
+          @click.stop="dialog = true"
+        >
+          {{ $t('generic.create') }}
+        </v-btn>
         <v-btn
           class="text-capitalize ms-2"
-          :disabled="!selectedGroups.length"
-          color="error"
-          @click="confirmDelete"
+          color="primary"
+          :disabled="!canEdit"
+          @click.stop="edit"
         >
-          Apagar ({{ selectedGroups.length }})
+          Edit
         </v-btn>
-        <v-btn color="primary" dark @click="dialog = true">
-          Criar Grupo
+        <v-btn
+          class="text-capitalize ms-2"
+          :disabled="!canDelete"
+          outlined
+          @click.stop="onDeleteClick"
+        >
+          {{ $t('generic.delete') }}
         </v-btn>
-      </div>
-    </v-card-title>
+      </v-card-title>
 
+      <v-card-text>
+        <v-text-field
+          v-model="search"
+          :prepend-inner-icon="mdiMagnify"
+          :label="$t('generic.search')"
+          single-line
+          hide-details
+          filled
+        />
+      </v-card-text>
+
+      <!-- ✅ Mensagem de erro com transição fade -->
+      <transition name="fade">
+        <v-alert
+          v-if="errorMessage"
+          type="error"
+          class="ma-4"
+          elevation="2"
+          style="background-color: #fdecea; color: #b71c1c; border-left: 4px solid #b71c1c;"
+          dense
+        >
+          <v-icon left color="error">mdi-alert-circle</v-icon>
+          {{ errorMessage }}
+        </v-alert>
+      </transition>
+
+      <!-- ✅ Mensagem de sucesso com transição fade -->
+      <transition name="fade">
+        <div v-if="showSnackbar" class="success-message">
+          <v-icon small class="mr-2" color="success">mdi-check-circle</v-icon>
+          {{ successMessage }}
+        </div>
+      </transition>
+
+      <!-- LISTA DE PERFIS -->
+      <v-data-table
+        v-model="selectedGroups"
+        :headers="headers"
+        :items="filteredGroups"
+        item-key="id"
+        show-select
+        :footer-props="{
+          showFirstLastPage: true,
+          'items-per-page-options': [10, 50, 100],
+          'items-per-page-text': $t('vuetify.itemsPerPageText'),
+          'page-text': $t('dataset.pageText')
+        }"
+      >
+        <template #[`item.name`]="{ item }">
+          Nome do perfil: {{ item.name }}
+        </template>
+
+        <template #[`item.permissions`]="{ item }">
+          <div class="d-flex flex-wrap gap-2">
+            <v-chip
+              v-for="perm in item.permissions"
+              :key="perm.id"
+              class="permission-chip"
+              small
+            >
+              <v-icon
+                v-if="getPermissionIcon(perm.codename)"
+                left
+                small
+              >
+                {{ getPermissionIcon(perm.codename) }}
+              </v-icon>
+              {{ perm.name }}
+            </v-chip>
+          </div>
+        </template>
+      </v-data-table>
+    </v-card>
+
+    <!-- Diálogo de remoção -->
     <v-dialog v-model="dialogDelete" max-width="400px">
       <v-card>
         <v-card-title class="headline">Confirmar Exclusão</v-card-title>
         <v-card-text>
-          Tem certeza que deseja excluir {{ selectedGroups.length }} grupo(s)?
+          Tem certeza que deseja excluir {{ selectedGroups.length }} perfil(is)?
           Esta ação não pode ser desfeita.
         </v-card-text>
         <v-card-actions>
@@ -32,15 +117,16 @@
       </v-card>
     </v-dialog>
 
+    <!-- Diálogo de criação -->
     <v-dialog v-model="dialog" max-width="600px">
       <v-card>
         <v-card-title>
-          <span class="text-h6">Novo Grupo</span>
+          <span class="text-h6">Novo Perfil</span>
         </v-card-title>
         <v-card-text>
           <v-text-field
             v-model="newGroup.name"
-            label="Nome do Grupo"
+            label="Nome do Perfil"
             required
             :error-messages="nameError"
             @input="nameError = ''"
@@ -67,50 +153,49 @@
       </v-card>
     </v-dialog>
 
-    <div class="pa-4">
-      <v-card
-        v-for="group in groups"
-        :key="group.id"
-        class="mb-4 elevation-2"
-        :class="{ 'selected-group': selectedGroups.some(g => g.id === group.id) }"
-        @click="toggleGroupSelection(group)"
-      >
-        <v-card-title class="d-flex align-center justify-space-between">
-          <v-checkbox
-            :input-value="selectedGroups.some(g => g.id === group.id)"
-            @click.stop
-            @change="toggleGroupSelection(group)"
-            hide-details
-            class="mr-2"
-          ></v-checkbox>
-          <span class="text-subtitle-1 text--secondary">ID: {{ group.id }}</span>
+    <!-- Diálogo de edição -->
+    <v-dialog v-model="dialogEdit" max-width="600px">
+      <v-card v-if="selectedGroupForEdit">
+        <v-card-title>
+          <span class="text-h6">Editar Perfil</span>
         </v-card-title>
-        <v-card-subtitle class="pt-0">
-          <span class="text-h6">{{ group.name }}</span>
-        </v-card-subtitle>
-
         <v-card-text>
-          <div class="d-flex flex-wrap gap-2">
-            <v-chip
-              v-for="perm in group.permissions"
-              :key="perm.id"
-              class="permission-chip"
-              small
-            >
-              <v-icon left small v-if="getPermissionIcon(perm.codename)">
-                {{ getPermissionIcon(perm.codename) }}</v-icon>
-              {{ perm.name }}
-            </v-chip>
-          </div>
+          <v-text-field
+            v-model="selectedGroupForEdit.name"
+            label="Nome do Perfil"
+            required
+            :error-messages="nameError"
+            @input="nameError = ''"
+          />
+          <v-autocomplete
+            v-model="selectedGroupForEdit.permissions"
+            :items="allPermissions"
+            item-text="name"
+            item-value="id"
+            label="Permissões"
+            multiple
+            chips
+            deletable-chips
+            return-object
+            :error-messages="permissionsError"
+            @change="permissionsError = ''"
+          />
         </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="closeEditDialog">Cancelar</v-btn>
+          <v-btn color="primary" @click="saveEditedGroup">Salvar</v-btn>
+        </v-card-actions>
       </v-card>
-    </div>
-  </v-card>
+    </v-dialog>
+  </div>
 </template>
 
 <script lang="ts">
 import Vue from 'vue'
 import { mapGetters } from 'vuex'
+import { AxiosInstance } from 'axios'
+import { mdiMagnify } from '@mdi/js'
 
 type Permission = {
   id: number
@@ -125,6 +210,16 @@ type Group = {
   permissions: Permission[]
 }
 
+interface VueWithAxios extends Vue {
+  $axios: AxiosInstance
+  $store: {
+    getters: {
+      'auth/getUserId': number
+      'auth/getUsername': string
+    }
+  }
+}
+
 export default Vue.extend({
   layout: 'projects',
   middleware: ['check-auth', 'auth'],
@@ -135,10 +230,17 @@ export default Vue.extend({
       isLoading: false,
       dialog: false,
       dialogDelete: false,
+      dialogEdit: false,
       allPermissions: [] as Permission[],
       selectedGroups: [] as Group[],
       nameError: '',
       permissionsError: '',
+      errorMessage: '',
+      successMessage: '',
+      showSnackbar: false,
+      search: '',
+      mdiMagnify,
+      selectedGroupForEdit: null as Group | null,
 
       newGroup: {
         name: '',
@@ -151,8 +253,8 @@ export default Vue.extend({
     this.isLoading = true
     try {
       const [groupRes, permRes] = await Promise.all([
-        this.$axios.get('/v1/groups/'),
-        this.$axios.get('/v1/permissions/')
+        (this as unknown as VueWithAxios).$axios.get('/v1/groups/'),
+        (this as unknown as VueWithAxios).$axios.get('/v1/permissions/')
       ])
       this.groups = groupRes.data
       this.allPermissions = permRes.data
@@ -164,7 +266,26 @@ export default Vue.extend({
   },
 
   computed: {
-    ...mapGetters('auth', ['isStaff'])
+    ...mapGetters('auth', ['isStaff']),
+    canDelete() {
+      return this.selectedGroups.length > 0
+    },
+    canEdit() {
+      return this.selectedGroups.length === 1
+    },
+    filteredGroups(): Group[] {
+      if (!this.search) return this.groups
+      const searchLower = this.search.toLowerCase()
+      return this.groups.filter(group =>
+        group.name.toLowerCase().includes(searchLower)
+      )
+    },
+    headers() {
+      return [
+        { text: 'Nome do perfil', value: 'name' },
+        { text: 'Permissões', value: 'permissions', sortable: false }
+      ]
+    }
   },
 
   methods: {
@@ -177,7 +298,7 @@ export default Vue.extend({
       }
     },
 
-    confirmDelete() {
+    onDeleteClick() {
       if (this.selectedGroups.length > 0) {
         this.dialogDelete = true
       }
@@ -187,14 +308,19 @@ export default Vue.extend({
       try {
         await Promise.all(
           this.selectedGroups.map(group =>
-            this.$axios.delete(`/v1/groups/${group.id}/delete/`)
+            (this as unknown as VueWithAxios).$axios.delete(`/v1/groups/${group.id}/`)
           )
         )
         this.dialogDelete = false
         this.selectedGroups = []
+        this.successMessage = 'Perfis excluídos com sucesso!'
+        this.showSnackbar = true
+        setTimeout(() => (this.showSnackbar = false), 3000)
         this.$fetch()
       } catch (err) {
-        console.error('Erro ao excluir grupos:', err)
+        console.error('Erro ao excluir perfis:', err)
+        this.errorMessage = 'Erro ao excluir perfis'
+        setTimeout(() => (this.errorMessage = ''), 3000)
       }
     },
 
@@ -210,7 +336,7 @@ export default Vue.extend({
       let isValid = true
 
       if (!this.newGroup.name.trim()) {
-        this.nameError = 'O nome do grupo é obrigatório'
+        this.nameError = 'O nome do perfil é obrigatório'
         isValid = false
       }
 
@@ -232,16 +358,20 @@ export default Vue.extend({
           name: this.newGroup.name.trim(),
           permissions: this.newGroup.permissions.map(p => p.id)
         }
-        await this.$axios.post('/v1/groups/create/', payload)
+        await (this as unknown as VueWithAxios).$axios.post('/v1/groups/create/', payload)
         this.closeDialog()
+        this.successMessage = 'Perfil criado com sucesso!'
+        this.showSnackbar = true
+        setTimeout(() => (this.showSnackbar = false), 3000)
         this.$fetch()
       } catch (err: any) {
-        console.error('Erro ao criar grupo:', err)
+        console.error('Erro ao criar perfil:', err)
         if (err.response?.data?.name) {
           this.nameError = err.response.data.name[0]
         }
       }
     },
+
     getPermissionIcon(codename: string) {
       const icons: { [key: string]: string } = {
         'add_user': 'mdi-account-plus',
@@ -250,6 +380,56 @@ export default Vue.extend({
         'view_user': 'mdi-account-eye'
       }
       return icons[codename] || 'mdi-account'
+    },
+
+    edit() {
+      if (this.selectedGroups.length === 1) {
+        this.selectedGroupForEdit = { ...this.selectedGroups[0] }
+        this.dialogEdit = true
+      } else {
+        console.warn('Please select exactly one group to edit.')
+      }
+    },
+
+    closeEditDialog() {
+      this.dialogEdit = false
+      this.selectedGroupForEdit = null
+      this.nameError = ''
+      this.permissionsError = ''
+    },
+
+    async saveEditedGroup() {
+      if (!this.selectedGroupForEdit) return
+
+      // Basic validation for the edited group
+      let isValid = true
+      if (!this.selectedGroupForEdit.name.trim()) {
+        this.nameError = 'O nome do perfil é obrigatório'
+        isValid = false
+      }
+      if (this.selectedGroupForEdit.permissions.length === 0) {
+        this.permissionsError = 'Selecione pelo menos uma permissão'
+        isValid = false
+      }
+      if (!isValid) return
+
+      try {
+        const payload = {
+          name: this.selectedGroupForEdit.name.trim(),
+          permissions_ids: this.selectedGroupForEdit.permissions.map(p => p.id)
+        }
+        await (this as unknown as VueWithAxios).$axios.put(`/v1/groups/${this.selectedGroupForEdit.id}/`, payload)
+        this.closeEditDialog()
+        this.successMessage = 'Perfil editado com sucesso!'
+        this.showSnackbar = true
+        setTimeout(() => (this.showSnackbar = false), 3000)
+        this.$fetch()
+      } catch (err: any) {
+        console.error('Erro ao editar perfil:', err)
+        if (err.response?.data?.name) {
+          this.nameError = err.response.data.name[0]
+        }
+      }
     }
   }
 })
@@ -257,7 +437,7 @@ export default Vue.extend({
 
 <style scoped>
 .gap-2 {
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .selected-group {
@@ -268,10 +448,33 @@ export default Vue.extend({
   background-color: #E3F2FD !important; /* blue lighten-5 */
   color: #0D47A1 !important; /* blue darken-4 */
   transition: background-color 0.2s ease-in-out;
+  padding: 2px 6px; /* Reduced padding */
+  font-size: 0.75rem; /* Smaller font size */
 }
 
 .permission-chip:hover {
   background-color: #BBDEFB !important; /* blue lighten-4, slightly darker */
   color: #0D47A1 !important; /* Keep original text color */
+}
+
+.success-message {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: #4CAF50;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  z-index: 1000;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s;
+}
+.fade-enter, .fade-leave-to {
+  opacity: 0;
 }
 </style>

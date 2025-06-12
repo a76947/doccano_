@@ -31,133 +31,163 @@
 
       <!-- Perspective Filters -->
       <v-row class="mt-2">
-        <v-col cols="12" md="8" lg="6" class="ml-auto">
-          <v-expansion-panels>
-            <v-expansion-panel class="filter-panel">
-              <v-expansion-panel-header class="filter-header">
-                <div class="d-flex align-center">
-                  <v-icon left color="primary" class="mr-2">mdi-filter-variant</v-icon>
-                  <span class="text-subtitle-2 font-weight-medium">Perspective Filters</span>
-                </div>
-                <template #actions>
-                  <v-btn
-                    v-if="hasActiveFilters"
-                    small
-                    text
-                    color="error"
-                    class="mr-2 clear-filters-btn"
-                    @click.stop="clearFilters"
-                  >
-                    <v-icon small left>mdi-close</v-icon>
-                    Clear Filters
-                  </v-btn>
-                  <v-icon color="primary" small>
-                    {{ showFilters ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
-                  </v-icon>
-                </template>
-              </v-expansion-panel-header>
-              <v-expansion-panel-content class="filter-content">
-                <v-row>
-                  <v-col v-for="(group, groupIndex) in perspectiveGroups" 
-                    :key="groupIndex" 
-                    cols="12" 
-                    md="6"
-                  >
-                    <v-card flat class="perspective-filter-card">
-                      <v-card-title class="py-2">
-                        <v-icon left color="primary" 
-                          class="mr-2">mdi-account-group</v-icon>
-                        <span class="text-subtitle-1 font-weight-medium">{{ group.name }}</span>
-                      </v-card-title>
-                      <v-divider class="mx-4"></v-divider>
-                      <v-card-text class="py-2">
-                        <div v-for="question in group.questions" :key="question.id" class="mb-4">
-                          <div class="d-flex align-center mb-1">
-                            <v-icon small color="primary" 
-                              class="mr-2">mdi-help-circle</v-icon>
-                            <div class="text-subtitle-2 
-                            font-weight-medium">{{ question.question }}</div>
-                          </div>
-                          
-                          <!-- String/Int Options -->
-                          <v-select
-                            v-if="question.data_type === 'string' || question.data_type === 'int'"
-                            v-model="selectedAnswers[question.id]"
-                            :items="question.options"
-                            :label="'Select ' + question.question"
-                            multiple
-                            chips
-                            deletable-chips
-                            clearable
-                            outlined
-                            dense
-                            class="mt-1"
-                            @change="applyFilters"
-                          >
-                            <template #selection="{ item, index }">
-                              <v-chip
-                                v-if="index < 2"
-                                color="primary"
-                                outlined
-                                x-small
-                                class="mr-1"
-                              >
-                                {{ item }}
-                              </v-chip>
-                              <span
-                                v-else-if="index === 2"
-                                class="grey--text text-caption pl-2"
-                              >
-                                (+{{ selectedAnswers[question.id].length - 2 }} others)
-                              </span>
-                            </template>
-                          </v-select>
-
-                          <!-- Boolean Options -->
-                          <v-radio-group
-                            v-else-if="question.data_type === 'boolean'"
-                            v-model="selectedAnswers[question.id]"
-                            row
-                            dense
-                            class="mt-1"
-                            @change="applyFilters"
-                          >
-                            <v-radio
-                              :value="true"
-                              color="primary"
-                              class="mr-4"
-                            >
-                              <template #label>
-                                <div class="d-flex align-center">
-                                  <v-icon small color="success" 
-                                    class="mr-1">mdi-check-circle</v-icon>
-                                  <span class="text-caption">Yes</span>
-                                </div>
-                              </template>
-                            </v-radio>
-                            <v-radio
-                              :value="false"
-                              color="primary"
-                            >
-                              <template #label>
-                                <div class="d-flex align-center">
-                                  <v-icon small color="error" class="mr-1">mdi-close-circle</v-icon>
-                                  <span class="text-caption">No</span>
-                                </div>
-                              </template>
-                            </v-radio>
-                          </v-radio-group>
-                        </div>
-                      </v-card-text>
-                    </v-card>
-                  </v-col>
-                </v-row>
-              </v-expansion-panel-content>
-            </v-expansion-panel>
-          </v-expansion-panels>
+        <v-col cols="12" md="10" lg="8" class="ml-auto">
+          <v-btn
+            color="primary"
+            class="filter-btn"
+            @click="showFilterDialog = true"
+          >
+            <v-icon left>mdi-filter-variant</v-icon>
+            Perspective Filters
+            <v-chip
+              v-if="hasActiveFilters"
+              color="error"
+              small
+              class="ml-2"
+            >
+              {{ activeFiltersCount }}
+            </v-chip>
+          </v-btn>
         </v-col>
       </v-row>
     </v-card-title>
+
+    <!-- Filter Dialog -->
+    <v-dialog
+      v-model="showFilterDialog"
+      max-width="900px"
+      content-class="filter-dialog"
+    >
+      <v-card class="filter-dialog-card">
+        <v-card-title class="filter-dialog-title">
+          <div class="d-flex align-center">
+            <v-icon left color="primary" class="mr-2">mdi-filter-variant</v-icon>
+            <span class="text-h6">Perspective Filters</span>
+          </div>
+          <v-spacer></v-spacer>
+          <v-btn
+            v-if="hasActiveFilters"
+            color="error"
+            text
+            class="clear-filters-btn"
+            @click="clearFilters"
+          >
+            <v-icon small left>mdi-close</v-icon>
+            Clear Filters
+          </v-btn>
+          <v-btn
+            icon
+            @click="showFilterDialog = false"
+          >
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+        </v-card-title>
+
+        <v-card-text class="filter-dialog-content">
+          <v-row>
+            <v-col v-for="(group, groupIndex) in perspectiveGroups" 
+              :key="groupIndex" 
+              cols="12" 
+              md="6"
+            >
+              <v-card flat class="perspective-filter-card">
+                <v-card-title class="py-2">
+                  <v-icon left color="primary" class="mr-2">mdi-account-group</v-icon>
+                  <span class="text-subtitle-1 font-weight-medium">{{ group.name }}</span>
+                </v-card-title>
+                <v-divider class="mx-4"></v-divider>
+                <v-card-text class="py-2">
+                  <div v-for="question in group.questions" :key="question.id" class="mb-4">
+                    <div class="d-flex align-center mb-1">
+                      <v-icon small color="primary" class="mr-2">mdi-help-circle</v-icon>
+                      <div class="text-subtitle-2 font-weight-medium">{{ question.question }}</div>
+                    </div>
+                    
+                    <!-- String/Int Options -->
+                    <v-select
+                      v-if="question.data_type === 'string' || question.data_type === 'int'"
+                      v-model="selectedAnswers[question.id]"
+                      :items="question.options"
+                      :label="'Select ' + question.question"
+                      multiple
+                      chips
+                      deletable-chips
+                      clearable
+                      outlined
+                      dense
+                      class="mt-1"
+                      @change="applyFilters"
+                    >
+                      <template #selection="{ item, index }">
+                        <v-chip
+                          v-if="index < 2"
+                          color="primary"
+                          outlined
+                          x-small
+                          class="mr-1"
+                        >
+                          {{ item }}
+                        </v-chip>
+                        <span
+                          v-else-if="index === 2"
+                          class="grey--text text-caption pl-2"
+                        >
+                          (+{{ selectedAnswers[question.id].length - 2 }} others)
+                        </span>
+                      </template>
+                    </v-select>
+
+                    <!-- Boolean Options -->
+                    <v-radio-group
+                      v-else-if="question.data_type === 'boolean'"
+                      v-model="selectedAnswers[question.id]"
+                      row
+                      dense
+                      class="mt-1"
+                      @change="applyFilters"
+                    >
+                      <v-radio
+                        :value="true"
+                        color="primary"
+                        class="mr-4"
+                      >
+                        <template #label>
+                          <div class="d-flex align-center">
+                            <v-icon small color="success" class="mr-1">mdi-check-circle</v-icon>
+                            <span class="text-caption">Yes</span>
+                          </div>
+                        </template>
+                      </v-radio>
+                      <v-radio
+                        :value="false"
+                        color="primary"
+                      >
+                        <template #label>
+                          <div class="d-flex align-center">
+                            <v-icon small color="error" class="mr-1">mdi-close-circle</v-icon>
+                            <span class="text-caption">No</span>
+                          </div>
+                        </template>
+                      </v-radio>
+                    </v-radio-group>
+                  </div>
+                </v-card-text>
+              </v-card>
+            </v-col>
+          </v-row>
+        </v-card-text>
+
+        <v-card-actions class="filter-dialog-actions">
+          <v-spacer></v-spacer>
+          <v-btn
+            color="primary"
+            @click="showFilterDialog = false"
+          >
+            Close
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <!-- Data Table -->
     <v-data-table
@@ -248,7 +278,7 @@ export default {
       discrepancies: [],
       perspectiveGroups: [],
       selectedAnswers: {},
-      showFilters: false,
+      showFilterDialog: false,
       snackbar: false,
       snackbarMessage: '',
       snackbarError: false,
@@ -345,15 +375,44 @@ export default {
         }
         return values !== null && values !== undefined
       })
+    },
+    activeFiltersCount() {
+      return Object.values(this.selectedAnswers).reduce((count, values) => {
+        if (Array.isArray(values)) {
+          return count + values.length;
+        }
+        return count + (values !== null && values !== undefined ? 1 : 0);
+      }, 0);
     }
   },
 
-  mounted() {
-    this.fetchDiscrepancies();
-    this.fetchPerspectiveGroups();
+  async created() {
+    this.loadSelectedAnswers();
+    await this.fetchDiscrepancies();
+    await this.fetchPerspectiveGroups();
+  },
+
+  watch: {
+    selectedAnswers: {
+      handler(newVal) {
+        localStorage.setItem(`perspectiveFilters-${this.projectId}`, JSON.stringify(newVal));
+      },
+      deep: true
+    }
   },
 
   methods: {
+    loadSelectedAnswers() {
+      const savedFilters = localStorage.getItem(`perspectiveFilters-${this.projectId}`);
+      if (savedFilters) {
+        try {
+          this.selectedAnswers = JSON.parse(savedFilters);
+        } catch (e) {
+          console.error("Error parsing saved perspective filters:", e);
+          this.selectedAnswers = {};
+        }
+      }
+    },
     async fetchDiscrepancies() {
       try {
         const response = await this.$services.discrepancy.listDiscrepancie(this.projectId);
@@ -381,8 +440,7 @@ export default {
 
     applyFilters() {
       console.log('Applying filters...')
-      // Forçar atualização da lista
-      this.$forceUpdate()
+      // Filters are automatically applied via reactivity when selectedAnswers changes
     },
 
     updateSort() {
@@ -481,45 +539,74 @@ export default {
   background-color: #f5f5f5;
 }
 
-.filter-panel {
-  border-radius: 4px;
+.filter-btn {
+  background: linear-gradient(145deg, #e3f2fd, #bbdefb) !important;
+  color: #1976d2 !important;
+  border-radius: 24px;
+  padding: 0 24px;
+  height: 40px;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.filter-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.filter-dialog-card {
+  border-radius: 16px;
   overflow: hidden;
-  background-color: #f5f5f5;
-  margin-right: 16px;
-  margin-left: auto;
 }
 
-.filter-header {
-  background-color: #e0e0e0 !important;
-  min-height: 40px !important;
-  padding: 0 12px;
+.filter-dialog-title {
+  background: linear-gradient(145deg, #e3f2fd, #bbdefb);
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
-.filter-header .v-btn {
-  min-width: 0;
-  padding: 0 8px;
-  height: 28px;
-  font-size: 0.75rem;
+.filter-dialog-content {
+  padding: 24px;
+  max-height: 70vh;
+  overflow-y: auto;
 }
 
-.filter-content {
-  background-color: #f5f5f5;
-  padding: 8px;
+.filter-dialog-actions {
+  padding: 16px 24px;
+  background: #f5f5f5;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .perspective-filter-card {
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
   transition: all 0.3s ease;
-  background-color: white;
+  background: linear-gradient(145deg, #ffffff, #fafafa);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  margin-bottom: 16px;
 }
 
 .perspective-filter-card:hover {
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
 }
 
-.v-expansion-panel-content {
-  background-color: #f5f5f5;
+.perspective-filter-card .v-card-title {
+  background: linear-gradient(145deg, #e8f5e9, #c8e6c9);
+  border-radius: 12px 12px 0 0;
+  padding: 12px 16px;
+}
+
+.perspective-filter-card .v-card-title .v-icon {
+  color: #2e7d32;
+}
+
+.perspective-filter-card .v-card-text {
+  padding: 16px;
 }
 
 .v-select ::v-deep .v-select__selections {
@@ -528,6 +615,8 @@ export default {
 
 .v-select ::v-deep .v-chip {
   margin: 2px;
+  background: linear-gradient(145deg, #e3f2fd, #bbdefb) !important;
+  border: none !important;
 }
 
 .v-radio ::v-deep .v-radio__label {
@@ -535,24 +624,62 @@ export default {
   color: rgba(0, 0, 0, 0.87);
 }
 
-.v-card__text {
-  padding: 8px 16px;
-}
-
-.v-card__title {
-  padding: 8px 16px;
-}
-
-.v-expansion-panel-header {
-  color: rgba(0, 0, 0, 0.87) !important;
-  font-size: 0.875rem;
-}
-
 .clear-filters-btn {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  background: linear-gradient(145deg, #ffebee, #ffcdd2) !important;
+  color: #c62828 !important;
+  border-radius: 16px;
+  padding: 0 16px;
+  height: 32px;
+  font-weight: 500;
 }
 
 .clear-filters-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2) !important;
+  background: linear-gradient(145deg, #ffcdd2, #ef9a9a) !important;
+  transform: translateY(-1px);
+}
+
+/* Add styles for the filter groups */
+.perspective-filter-card .text-subtitle-1 {
+  color: #1b5e20;
+  font-weight: 600;
+}
+
+.perspective-filter-card .text-subtitle-2 {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+/* Style for the select and radio inputs */
+.v-select ::v-deep .v-input__slot {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.v-radio-group ::v-deep .v-radio {
+  margin-right: 24px;
+}
+
+.v-radio-group ::v-deep .v-radio__label {
+  color: #424242;
+}
+
+/* Custom scrollbar for the dialog content */
+.filter-dialog-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.filter-dialog-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.filter-dialog-content::-webkit-scrollbar-thumb {
+  background: #bbdefb;
+  border-radius: 4px;
+}
+
+.filter-dialog-content::-webkit-scrollbar-thumb:hover {
+  background: #90caf9;
 }
 </style>

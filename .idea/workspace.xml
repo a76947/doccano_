@@ -6,9 +6,15 @@
   <component name="ChangeListManager">
     <list default="true" id="a484398d-3529-417b-a5fd-e173368e4a6d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/components/layout/TheSideBar.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/components/layout/TheSideBar.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/components/metrics/MemberProgress.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/components/metrics/MemberProgress.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/filepond-temp-uploads/SkL7TjnvwG7uYZLdkgmDJj/EkGkCBWJJxUxKV3uJDfQMx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/perfis/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/perfis/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/perfis/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/perfis/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/perfis/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/perfis/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/projects/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/projects/serializers.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/pages/perfis/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/pages/perfis/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/pages/projects/_id/discrepancies/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/pages/projects/_id/discrepancies/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/pages/projects/_id/perspectives/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/pages/projects/_id/perspectives/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/tsconfig.json" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -52,28 +58,28 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenDjangoStructureViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "deleteuser3",
-    "last_opened_file_path": "C:/LEI/3_ano/LES/doccano_mario_newgit",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "prettierjs.PrettierConfiguration.Package": "C:\\LEI\\3_ano\\LES\\doccano_mario_newgit\\frontend\\node_modules\\prettier",
-    "ts.external.directory.path": "C:\\LEI\\3_ano\\LES\\doccano_mario_newgit\\frontend\\node_modules\\typescript\\lib",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenDjangoStructureViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;deleteuser4&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/LEI/3_ano/LES/doccano_mario_newgit&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;prettierjs.PrettierConfiguration.Package&quot;: &quot;C:\\LEI\\3_ano\\LES\\doccano_mario_newgit\\frontend\\node_modules\\prettier&quot;,
+    &quot;ts.external.directory.path&quot;: &quot;C:\\LEI\\3_ano\\LES\\doccano_mario_newgit\\frontend\\node_modules\\typescript\\lib&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   },
-  "keyToStringList": {
-    "vue.recent.templates": [
-      "Vue Composition API Component"
+  &quot;keyToStringList&quot;: {
+    &quot;vue.recent.templates&quot;: [
+      &quot;Vue Composition API Component&quot;
     ]
   }
-}]]></component>
+}</component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -95,6 +101,7 @@
       <workItem from="1742774370401" duration="1866000" />
       <workItem from="1742830994104" duration="7965000" />
       <workItem from="1743449576816" duration="2948000" />
+      <workItem from="1749735879304" duration="2862000" />
     </task>
     <servers />
   </component>
