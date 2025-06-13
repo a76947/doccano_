@@ -66,6 +66,15 @@
           </div>
         </div>
       </template>
+      <template #[`item.history`]="{ item }">
+        <v-btn
+          small
+          color="info"
+          @click="openHistory(item.sessionId, item._index)"
+        >
+          Histórico
+        </v-btn>
+      </template>
     </v-data-table>
 
     <!-- Botão para voltar -->
@@ -89,11 +98,23 @@
         <v-btn text v-bind="attrs" @click="snackbarError = false">Close</v-btn>
       </template>
     </v-snackbar>
+
+    <v-dialog v-model="dialogHistory" max-width="600px">
+      <RuleChat
+        v-if="dialogHistory"
+        :project-id="projectId"
+        :session-id="historySessionId"
+        :question-index="historyQuestionIndex"
+      />
+    </v-dialog>
   </v-card>
 </template>
 
 <script>
+import RuleChat from '~/components/rules/RuleChat.vue'
+
 export default {
+  components: { RuleChat },
   layout: 'project',
   middleware: ['check-auth', 'auth', 'setCurrentProject'],
   data() {
@@ -111,7 +132,11 @@ export default {
         { text: 'Regra', value: 'question' },
         { text: 'Votos', value: 'votes' },
         { text: 'Participação', value: 'participation' },
+        { text: 'Histórico', value: 'history', sortable: false },
       ],
+      dialogHistory: false,
+      historySessionId: null,
+      historyQuestionIndex: null,
     };
   },
   computed: {
@@ -135,7 +160,8 @@ export default {
     filteredQuestions() {
       if (this.selectedSession === 'all') {
         return this.votedSessions.flatMap(session => 
-          session.questions.map(question => ({
+          session.questions.map((question, index) => ({
+            _index: index,
             sessionId: session.id,
             question: question.question,
             votes: this.getResponseCounts(question.responses),
@@ -148,7 +174,8 @@ export default {
         const session = this.votedSessions.find(s => s.id.toString() === this.selectedSession);
         if (!session) return [];
         
-        return session.questions.map(question => ({
+        return session.questions.map((question, index) => ({
+          _index: index,
           sessionId: session.id,
           question: question.question,
           votes: this.getResponseCounts(question.responses),
@@ -291,7 +318,12 @@ export default {
     },
     goBack() {
       this.$router.back();
-    }
+    },
+    openHistory(sessionId, questionIndex) {
+      this.historySessionId = sessionId;
+      this.historyQuestionIndex = questionIndex;
+      this.dialogHistory = true;
+    },
   },
 };
 </script>

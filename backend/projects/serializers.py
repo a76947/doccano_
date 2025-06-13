@@ -20,6 +20,7 @@ from .models import (
     ToSubmitQuestions,
     VotingSession,
     VotingSessionAnswer,
+    RuleDiscussionMessage,
 )
 
 
@@ -232,3 +233,12 @@ class VotingSessionAnswerSerializer(serializers.ModelSerializer):
             if not isinstance(item, str):
                 raise serializers.ValidationError("Each answer must be a string.")
         return value
+
+class RuleDiscussionSerializer(serializers.ModelSerializer):
+    """Serializer for chat messages exchanged while discussing rules."""
+    username = serializers.CharField(source='created_by.username', read_only=True)
+
+    class Meta:
+        model = RuleDiscussionMessage  # type: ignore  # defined in models
+        fields = ['id', 'message', 'username', 'created_at']
+        read_only_fields = ['id', 'username', 'created_at']

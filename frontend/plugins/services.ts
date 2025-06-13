@@ -16,6 +16,7 @@ import { DiscrepacieApplicationService } from '@/services/application/descrepanc
 import { RulesApplicationService } from '~/services/application/rules/rulesApplicationService'
 import { VotingApplicationService } from '~/services/application/votationrules/votingApplicationService'
 import { AnswerRuleApplicationService } from '~/services/application/ruleanswer/rulesAnswerApplicationService'
+import { RuleDiscussionApplicationService } from '~/services/application/ruleDiscussion/ruleDiscussionApplicationService'
 
 export interface Services {
   categoryType: LabelApplicationService
@@ -35,6 +36,7 @@ export interface Services {
   rules: RulesApplicationService
   voting : VotingApplicationService
   answer: AnswerRuleApplicationService
+  ruleDiscussion: RuleDiscussionApplicationService
 }
 
 declare module 'vue/types/vue' {
@@ -63,10 +65,11 @@ const plugin: Plugin = (_, inject) => {
     user: new UserApplicationService(repositories.user),
     perspective: new PerspectiveApplicationService(repositories.perspective),
     annotation: new AnnotationApplicationService(repositories.annotation),
-    discrepancy: new DiscrepacieApplicationService(repositories.discrepancy), // Add this line
-    rules: new RulesApplicationService(repositories.rules), // Add this line
-    voting: new VotingApplicationService(repositories.voting), // Add this line
-    answer: new AnswerRuleApplicationService(repositories.answer), // Add this line
+    discrepancy: new DiscrepacieApplicationService(repositories.discrepancy),
+    rules: new RulesApplicationService(repositories.rules),
+    voting: new VotingApplicationService(repositories.voting),
+    answer: new AnswerRuleApplicationService(repositories.answer),
+    ruleDiscussion: new RuleDiscussionApplicationService(repositories.ruleDiscussion),
   }
   inject('services', services)
 }

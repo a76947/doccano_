@@ -38,6 +38,8 @@ import { ApiVotingRepository } from '~/repositories/votation/votingRepository'
 
 import { ApiAnswerRepository } from '~/repositories/answerule/answerRuleRepository'
 
+import { ApiRuleDiscussionRepository } from '~/repositories/ruleDiscussion/apiRuleDiscussionRepository'
+
 export interface Repositories {
   // User
   auth: APIAuthRepository
@@ -96,6 +98,8 @@ export interface Repositories {
 
   // Annotation
   annotation: APIAnnotationRepository
+
+  ruleDiscussion: ApiRuleDiscussionRepository
 }
 
 declare module 'vue/types/vue' {
@@ -163,7 +167,7 @@ const repositories: Repositories = {
   // Annotation
   annotation: new APIAnnotationRepository(),
 
-  
+  ruleDiscussion: new ApiRuleDiscussionRepository(),
 }
 
 const plugin: Plugin = (_, inject) => {

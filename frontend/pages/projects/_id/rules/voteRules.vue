@@ -14,6 +14,11 @@
             :loading="loadingSecondTable"
             @onSubmit="(res) => submitResponses(session, res)"
           />
+          <RuleChat
+            :project-id="$route.params.id"
+            :session-id="session.id"
+            :question-index="0"
+          />
         </v-expansion-panel-content>
       </v-expansion-panel>
     </v-expansion-panels>
@@ -72,8 +77,9 @@
 <script>
 import StringTableWithResponse from '~/components/rules/stringTableWithResponse.vue';
 import StringTableAdmin from '~/components/rules/stringTableAdmin.vue';
+import RuleChat from '~/components/rules/RuleChat.vue'
 export default {
-  components: { StringTableWithResponse, StringTableAdmin },
+  components: { StringTableWithResponse, StringTableAdmin, RuleChat },
   data() {
     return {
       rulesSecondTable: [],

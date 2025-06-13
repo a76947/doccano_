@@ -37,7 +37,8 @@ import {
   mdiDatabase,
   mdiHome,
   mdiLabel,
-  mdiPlayCircleOutline
+  mdiPlayCircleOutline,
+  mdiHistory
 } from '@mdi/js'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
@@ -154,6 +155,12 @@ export default {
           icon: mdiChartBar,
           text: 'Regras',
           link: 'rules',
+          isVisible: true
+        },
+        {
+          icon: mdiHistory,
+          text: 'Histórico das Regras',
+          link: 'rules/history',
           isVisible: true
         }
       ]

@@ -321,3 +321,33 @@ class VotingSessionAnswer(models.Model):
 
     def __str__(self):
         return f"Answer to {self.voting_session.questions}: {self.answer}"
+
+class RuleDiscussionMessage(models.Model):
+    """Messages exchanged during discussion of a rule in a VotingSession."""
+    project = models.ForeignKey(
+        'Project',
+        on_delete=models.CASCADE,
+        related_name='rule_messages'
+    )
+    voting_session = models.ForeignKey(
+        'VotingSession',
+        on_delete=models.CASCADE,
+        related_name='rule_messages'
+    )
+    # Index of the question inside VotingSession.questions array. 0-based.
+    question_index = models.PositiveIntegerField()
+
+    message = models.TextField()
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"RuleDiscussionMessage(session={self.voting_session.id}, idx={self.question_index})"
