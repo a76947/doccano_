@@ -187,6 +187,16 @@ export default Vue.extend({
         }
       })
       this.options.page = 1
+    },
+    'items': {
+      handler(newItems) {
+        newItems.forEach(item => {
+          if (item.assignments) {
+            this.$set(item, 'assignments', [...item.assignments]);
+          }
+        });
+      },
+      deep: true
     }
   },
 
@@ -199,26 +209,27 @@ export default Vue.extend({
     },
 
     toSelected(item: ExampleDTO) {
-      const assigneeIds = item.assignments.map((assignment) => assignment.assignee_id)
-      return this.members.filter((member) => assigneeIds.includes(member.user))
+      if (!item.assignments) {
+        return [];
+      }
+      const assigneeIds = item.assignments.map((assignment) => assignment.assignee_id);
+      const selectedMembers = this.members.filter((member) => assigneeIds.includes(member.user));
+      return selectedMembers;
     },
 
     onAssignOrUnassign(item: ExampleDTO, newAssignees: MemberItem[]) {
-      const newAssigneeIds = newAssignees.map((assignee) => assignee.user)
-      const oldAssigneeIds = item.assignments.map((assignment) => assignment.assignee_id)
-      if (oldAssigneeIds.length > newAssigneeIds.length) {
-        // unassign
-        for (const assignment of item.assignments) {
-          if (!newAssigneeIds.includes(assignment.assignee_id)) {
-            this.$emit('unassign', assignment.id)
-          }
+      const newAssigneeIds = newAssignees.map((assignee) => assignee.user);
+      const oldAssigneeIds = item.assignments.map((assignment) => assignment.assignee_id);
+      
+      for (const assignment of item.assignments) {
+        if (!newAssigneeIds.includes(assignment.assignee_id)) {
+          this.$emit('unassign', assignment.id);
         }
-      } else {
-        // assign
-        for (const newAssigneeId of newAssigneeIds) {
-          if (!oldAssigneeIds.includes(newAssigneeId)) {
-            this.$emit('assign', item.id, newAssigneeId)
-          }
+      }
+      
+      for (const newAssigneeId of newAssigneeIds) {
+        if (!oldAssigneeIds.includes(newAssigneeId)) {
+          this.$emit('assign', item.id, newAssigneeId);
         }
       }
     }

@@ -6,10 +6,28 @@
   <component name="ChangeListManager">
     <list default="true" id="a484398d-3529-417b-a5fd-e173368e4a6d" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/pages/perfis/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/pages/perfis/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/pages/projects/_id/perspectives/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/pages/projects/_id/perspectives/index.vue" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/repositories/perspective/apiPerspectiveRepository.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/repositories/perspective/apiPerspectiveRepository.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/services/application/perspective/perspectiveApplicationService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/services/application/perspective/perspectiveApplicationService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/api/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/api/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/data_export/celery_tasks.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/data_export/celery_tasks.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/data_export/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/data_export/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/data_export/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/data_export/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/examples/assignment/usecase.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/examples/assignment/usecase.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/examples/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/examples/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/examples/views/assignment.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/examples/views/assignment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/examples/views/example.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/examples/views/example.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/projects/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/projects/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/projects/views/annotation.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/projects/views/annotation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/users/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/users/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/components/example/AudioList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/components/example/AudioList.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/components/example/DocumentList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/components/example/DocumentList.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/components/example/FormAssignment.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/components/example/FormAssignment.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/components/example/ImageList.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/components/example/ImageList.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/components/layout/TheSideBar.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/components/layout/TheSideBar.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/pages/projects/_id/dataset/index.vue" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/pages/projects/_id/dataset/index.vue" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/plugins/repositories.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/plugins/repositories.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/repositories/annotation/apiAnnotationRepository.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/repositories/annotation/apiAnnotationRepository.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/repositories/example/apiDocumentRepository.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/repositories/example/apiDocumentRepository.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/services/application/annotation/annotationApplicationService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/services/application/annotation/annotationApplicationService.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/types/vue-shims.d.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/types/vue-shims.d.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -58,7 +76,7 @@
     &quot;RunOnceActivity.OpenDjangoStructureViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;deleteuser4&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;5casouso&quot;,
     &quot;last_opened_file_path&quot;: &quot;C:/LEI/3_ano/LES/doccano_mario_newgit&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
@@ -99,6 +117,10 @@
       <workItem from="1749735879304" duration="2862000" />
       <workItem from="1749748236981" duration="2983000" />
       <workItem from="1749758308459" duration="939000" />
+      <workItem from="1749778383401" duration="1430000" />
+      <workItem from="1749819573671" duration="6247000" />
+      <workItem from="1749837781367" duration="1254000" />
+      <workItem from="1749843651710" duration="1049000" />
     </task>
     <servers />
   </component>

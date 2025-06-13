@@ -39,7 +39,8 @@ import {
   mdiLabel,
   mdiPlayCircleOutline,
   mdiViewDashboard,
-  mdiAlertCircleOutline
+  mdiAlertCircleOutline,
+  mdiHistory
 } from '@mdi/js'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
@@ -119,14 +120,18 @@ export default {
           link: 'metrics',
           isVisible: this.isProjectAdmin
         },
-
+        {
+          icon: mdiHistory,
+          text: 'History of Annotations',
+          link: 'annotation-history',
+          isVisible: true
+        },
         {
           icon: mdiViewDashboard,
           text: 'Perspetivas',
           link: 'perspectives',
           isVisible: this.isProjectAdmin
         },
-
         {
           icon: mdiDatabase,
           text: 'Perspetivas',
@@ -145,7 +150,6 @@ export default {
           link: 'annotation-statistics',
           isVisible: true
         },
-
         {
           icon: mdiCog,
           text: this.$t('settings.title'),

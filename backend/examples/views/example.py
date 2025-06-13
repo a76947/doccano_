@@ -3,12 +3,17 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
+import os
+import logging
 
 from examples.filters import ExampleFilter
 from examples.models import Example
 from examples.serializers import ExampleSerializer
 from projects.models import Member, Project
 from projects.permissions import IsProjectAdmin, IsProjectStaffAndReadOnly
+
+logger = logging.getLogger(__name__)
 
 
 class ExampleList(generics.ListCreateAPIView):
@@ -52,3 +57,26 @@ class ExampleDetail(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ExampleSerializer
     lookup_url_kwarg = "example_id"
     permission_classes = [IsAuthenticated & (IsProjectAdmin | IsProjectStaffAndReadOnly)]
+
+
+class DatasetNamesAPI(APIView):
+    permission_classes = [IsAuthenticated & IsProjectAdmin] # Or appropriate permissions
+
+    def get(self, request, *args, **kwargs):
+        project_id = kwargs["project_id"]
+        project = get_object_or_404(Project, pk=project_id)
+        
+        dataset_names = []
+        for example in Example.objects.filter(project=project):
+            logger.info(f"Processing example ID: {example.id}")
+            logger.info(f"  example.filename.name: {example.filename.name if example.filename else 'N/A'}")
+            logger.info(f"  example.upload_name: {example.upload_name if example.upload_name else 'N/A'}")
+            if example.upload_name:
+                dataset_names.append(example.upload_name)
+            elif example.filename:
+                dataset_names.append(os.path.basename(example.filename.name))
+        
+        # Get unique dataset names
+        unique_dataset_names = sorted(list(set(dataset_names)))
+
+        return Response({"datasetNames": unique_dataset_names}, status=status.HTTP_200_OK)
