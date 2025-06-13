@@ -64,7 +64,22 @@
 
           <!-- Diff visualization -->
           <v-card outlined class="mb-6 pa-4">
-            <h3 class="subtitle-1 mb-4">Comparação de Anotações</h3>
+            <div class="d-flex align-center mb-4">
+              <h3 class="subtitle-1 mr-4 mb-0">Comparação de Anotações</h3>
+              <v-select
+                v-if="labelOptions.length"
+                v-model="selectedLabelId"
+                :items="labelOptions"
+                item-text="text"
+                item-value="id"
+                dense
+                hide-details
+                outlined
+                style="max-width: 200px"
+                label="Label"
+                @change="onLabelChange"
+              />
+            </div>
             <div v-if="annotations.length === 0" class="text-center grey--text caption">
               Sem anotações para comparar.
             </div>
@@ -94,7 +109,7 @@
 
           <!-- Discussion panel -->
           <v-card outlined>
-            <h3 class="subtitle-1 pa-4 pb-0">Discussão</h3>
+            <h3 class="subtitle-1 pa-4 pb-0">Discussão - Label {{ currentLabelText }}</h3>
             <v-list dense two-line class="py-0">
               <v-list-item v-for="c in comments" :key="c.id">
                 <v-list-item-content>
@@ -156,7 +171,9 @@ export default {
       comments: [],
       newComment: '',
       annotations: [],
-      annotationUsers: [],
+      labelOptions: [],
+      selectedLabelId: null,
+      groupedByLabel: {},
     }
   },
   computed: {
@@ -171,6 +188,10 @@ export default {
         list = list.filter((e) => e.text.toLowerCase().includes(q))
       }
       return list
+    },
+    currentLabelText() {
+      const opt = this.labelOptions.find((o) => o.id === this.selectedLabelId)
+      return opt ? opt.text : ''
     }
   },
   async created() {
@@ -206,17 +227,27 @@ export default {
         // fetch member list for username mapping
         const members = await this.$repositories.member.list(projectId)
         const userMap = Object.fromEntries(members.map((m) => [m.id, m.username]))
-        // group by user
-        const grouped = {}
+        // collect label info and group users by label
+        const groupedByLabel = {}
         categories.forEach((c) => {
           const user = userMap[c.user] || c.user
-          if (!grouped[user]) grouped[user] = new Set()
-          grouped[user].add(labelMap[c.label] || c.label)
+          const labelId = c.label
+          const labelText = labelMap[labelId] || labelId
+          if (!groupedByLabel[labelId]) groupedByLabel[labelId] = { text: labelText, users: {} }
+          if (!groupedByLabel[labelId].users[user]) groupedByLabel[labelId].users[user] = new Set()
+          groupedByLabel[labelId].users[user].add(labelText)
         })
-        this.annotations = Object.entries(grouped).map(([user, labels]) => ({
-          user,
-          labels: Array.from(labels)
+        // create annotations list for selected label only later
+        this.labelOptions = Object.entries(groupedByLabel).map(([id, v]) => ({
+          id: Number(id),
+          text: v.text
         }))
+        if (this.selectedLabelId === null && this.labelOptions.length) {
+          this.selectedLabelId = this.labelOptions[0].id
+        }
+        this.groupedByLabel = groupedByLabel
+        this.buildAnnotations(groupedByLabel)
+        if (this.selectedLabelId) this.fetchComments(this.selected)
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('Failed to fetch annotations', err)
@@ -231,7 +262,13 @@ export default {
     async fetchComments(example) {
       try {
         const projectId = this.$route.params.id
-        this.comments = await this.$repositories.comment.list(projectId, example.id)
+        if (this.selectedLabelId === null) { this.comments = []; return }
+        const res = await this.$repositories.comment.list(
+          projectId,
+          example.id,
+          this.selectedLabelId
+        )
+        this.comments = res.filter((c) => Number(c.label) === this.selectedLabelId)
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('Failed to load comments', err)
@@ -246,14 +283,33 @@ export default {
       try {
         const projectId = this.$route.params.id
         const exampleId = this.selected.id
-        const newC = await this.$repositories.comment.create(projectId, exampleId, this.newComment)
-        this.comments.push(newC)
+        const newC = await this.$repositories.comment.create(
+          projectId,
+          exampleId,
+          this.newComment,
+          this.selectedLabelId
+        )
+        if (Number(newC.label) === this.selectedLabelId) this.comments.push(newC)
         this.newComment = ''
       } catch (err) {
         // eslint-disable-next-line no-console
         console.error('Failed to send comment', err)
       }
-    }
+    },
+    buildAnnotations(grouped) {
+      if (!this.selectedLabelId) { this.annotations = []; return }
+      const entry = grouped[this.selectedLabelId]
+      if (!entry) { this.annotations = []; return }
+      this.annotations = Object.entries(entry.users).map(([user, labels]) => ({
+        user,
+        labels: Array.from(labels)
+      }))
+    },
+    onLabelChange() {
+      this.comments = []
+      this.buildAnnotations(this.groupedByLabel)
+      if (this.selected) this.fetchComments(this.selected)
+    },
   }
 }
 </script>

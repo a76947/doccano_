@@ -11,7 +11,8 @@ function toModel(item: { [key: string]: any }): CommentItem {
     item.username,
     item.example,
     item.text,
-    item.created_at
+    item.created_at,
+    item.label || null
   )
 }
 
@@ -19,7 +20,8 @@ function toPayload(item: CommentItem): { [key: string]: any } {
   return {
     id: item.id,
     user: item.user,
-    text: item.text
+    text: item.text,
+    label: item.label
   }
 }
 
@@ -41,19 +43,24 @@ export class APICommentRepository {
     )
   }
 
-  async list(projectId: string, exampleId: number): Promise<CommentItem[]> {
-    const url = `/projects/${projectId}/comments?example=${exampleId}&limit=100`
+  async list(projectId: string, exampleId: number, labelId?: number): Promise<CommentItem[]> {
+    const base = `/projects/${projectId}/comments?example=${exampleId}&limit=100`
+    let url = base
+    if (labelId) url += `&label=${labelId}`
     const response = await this.request.get(url)
     return response.data.results.map((item: { [key: string]: any }) => toModel(item))
   }
 
-  async create(projectId: string, exampleId: number, text: string): Promise<CommentItem> {
+  async create(
+    projectId: string,
+    exampleId: number,
+    text: string,
+    labelId?: number
+  ): Promise<CommentItem> {
     const url = `/projects/${projectId}/comments?example=${exampleId}`
-    const response = await this.request.post(url, {
-      projectId,
-      exampleId,
-      text
-    })
+    const payload: any = { text }
+    if (labelId) payload.label = labelId
+    const response = await this.request.post(url, payload)
     return toModel(response.data)
   }
 
