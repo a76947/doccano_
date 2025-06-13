@@ -273,6 +273,12 @@ class PerspectiveAnswer(models.Model):
         on_delete=models.CASCADE, 
         related_name='perspective_answers'
     )
+    example = models.ForeignKey(
+        'examples.Example',
+        on_delete=models.CASCADE,
+        related_name='perspective_answers',
+        null=True
+    )
     created_by = models.ForeignKey(
         User, 
         on_delete=models.SET_NULL,
@@ -281,4 +287,4 @@ class PerspectiveAnswer(models.Model):
     answer = models.TextField()
 
     def __str__(self):
-        return f"Answer to {self.perspective.question}: {self.answer}"
+        return f"Answer for {self.perspective.question}: {self.answer}"
