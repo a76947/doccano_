@@ -10,6 +10,10 @@ export class AnswerRuleApplicationService {
         return await this.repository.listUserAnswers(projectId, votingSessionId);
     }
 
+    async listAllAnswers(projectId: string | number, votingSessionId: string | number) {
+        return await this.repository.listAllAnswers(projectId, votingSessionId);
+    }
+
     async list(projectId: string | number, answerSessionId: string | number) {
         return await this.repository.list(projectId, answerSessionId);
     }

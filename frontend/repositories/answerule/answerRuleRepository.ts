@@ -43,4 +43,17 @@ export class ApiAnswerRepository {
       throw error;
     }
   }
+
+  async listAllAnswers(projectId: string | number, votingSessionId: string | number) {
+    const url = `/projects/${projectId}/votingsessions/${votingSessionId}/all-answers`;
+    console.log('URL construída para user answers:', url);
+    try {
+      const response = await ApiService.get(url);
+      console.log('Resposta do GET (user answers):', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Erro no GET de user answers:', error);
+      throw error;
+    }
+  }
 }

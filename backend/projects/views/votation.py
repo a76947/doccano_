@@ -105,6 +105,22 @@ class VotingSessionUserAnswersView(APIView):
     def get(self, request, project_id, voting_session_id):
         user_answers = VotingSessionAnswer.objects.filter(
             project_id=project_id,
+            voting_session_id=voting_session_id,
+            created_by=request.user
+        )
+        
+        if not user_answers.exists():
+            return Response({"user_answers": []}, status=status.HTTP_200_OK)
+        
+        serializer = VotingSessionAnswerSerializer(user_answers, many=True)
+        return Response({"user_answers": serializer.data}, status=status.HTTP_200_OK)
+    
+class VotingSessionAnswersView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, project_id, voting_session_id):
+        user_answers = VotingSessionAnswer.objects.filter(
+            project_id=project_id,
             voting_session_id=voting_session_id
         )
         

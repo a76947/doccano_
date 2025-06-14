@@ -256,7 +256,7 @@ export default {
             try {
               // Tenta buscar as respostas do usuário
               console.log(`Buscando respostas para sessão ${session.id}...`);
-              const userAnswersResp = await this.$services.answer.listUserAnswers(
+              const userAnswersResp = await this.$services.answer.listAllAnswers(
                 this.projectId,
                 session.id
               );

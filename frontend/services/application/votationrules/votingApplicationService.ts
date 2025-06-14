@@ -12,7 +12,7 @@ export class VotingApplicationService {
         console.log("Service: Creating voting session with date:", 
             voteEndDate, "and questions:", questions);
         return await this.repository.create(projectId, voteEndDate, questions);
-      }
+    }
 
     async updateSessionFinish(projectId: string | number, votingSessionId: string | number) {
         const url = `/projects/${projectId}/votingsessions/${votingSessionId}/`;

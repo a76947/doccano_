@@ -34,7 +34,7 @@
         Vote Rules
       </v-btn>
       <!-- Novo botão para visualizar regras votadas -->
-      <v-btn color="info" class="ml-2" @click="goToVotedRules">
+      <v-btn v-if="isAdmin" color="info" class="ml-2" @click="goToVotedRules">
         View Voted Rules
       </v-btn>
     </div>
