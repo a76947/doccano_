@@ -122,5 +122,10 @@ export class APIProjectRepository {
     const response = await this.request.get('/users/with-projects/')
     return response.data
   }
-  
+
+  public async fetchReport(projectId: string, params: any = {}) {
+    const url = `/projects/${projectId}/report`
+    const response = await this.request.get(url, { params })
+    return response
+  }
 }

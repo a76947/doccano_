@@ -202,7 +202,7 @@ class PerspectiveAnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = PerspectiveAnswer
         fields = [
-            'id', 'perspective', 'project', 'answer', 
+            'id', 'perspective', 'project', 'example', 'answer', 
             'created_by', 'created_by_username', 'created_at'
         ]
     

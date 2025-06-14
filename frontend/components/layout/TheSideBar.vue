@@ -40,7 +40,8 @@ import {
   mdiPlayCircleOutline,
   mdiViewDashboard,
   mdiAlertCircleOutline,
-  mdiChartPie
+  mdiChartPie,
+  mdiChartBox
 } from '@mdi/js'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
@@ -120,19 +121,17 @@ export default {
           link: 'metrics',
           isVisible: this.isProjectAdmin
         },
-
         {
           icon: mdiViewDashboard,
           text: 'Perspetivas',
           link: 'perspectives',
           isVisible: this.isProjectAdmin
         },
-
         {
           icon: mdiDatabase,
           text: 'Perspetivas',
           link: 'perspectives',
-          isVisible: !this.isProjectAdmin// modificar
+          isVisible: !this.isProjectAdmin
         },
         {
           icon: mdiAlertCircleOutline,
@@ -140,7 +139,12 @@ export default {
           link: 'discrepancies',
           isVisible: this.isProjectAdmin
         },
-
+        {
+          icon: mdiChartBox,
+          text: 'Relatórios',
+          link: 'report',
+          isVisible: true
+        },
         {
           icon: mdiCog,
           text: this.$t('settings.title'),

@@ -3,6 +3,10 @@ from rest_framework.routers import DefaultRouter
 
 from .views.perspective import PerspectiveViewSet, PerspectiveGroupViewSet, PerspectiveAnswerViewSet
 from .views.project import DiscrepancyAnalysisView, ProjectList, ProjectDetail, CloneProject
+
+from .views.report import ReportAnnotationsView
+from .views.votacoes import VotacoesView
+
 from .views.tag import TagList, TagDetail
 from .views.member import MemberList, MemberDetail, MyRole
 from .views.permissions import MyProjectPermissions
@@ -37,6 +41,9 @@ urlpatterns = [
     path("projects/<int:project_id>/members/<int:member_id>", MemberDetail.as_view(), name="member_detail"),
     path("projects/<int:project_id>/clone", CloneProject.as_view(), name="clone_project"),
     path('projects/<int:project_id>/my-permissions/', MyProjectPermissions.as_view(), name='my-project-permissions'),
+    path("projects/<int:project_id>/report", ReportAnnotationsView.as_view(), name="project_report"),
+
+
     path("projects/<int:project_id>/discrepacies", DiscrepancyAnalysisView.as_view(), name="discrepancy_analysis"),
     path('projects/<int:project_id>/annotations', UserAnnotationsAPI.as_view(), name='user_annotations'),
     
@@ -45,6 +52,7 @@ urlpatterns = [
     
     # Chat endpoint
     path("projects/<int:project_id>/chat", ChatMessagesView.as_view(), name="chat_messages"),
+
     
     # New votacoes session-based endpoints
     path("projects/<int:project_id>/sessions", VotacoesSessionView.as_view(), name="session_list"),
@@ -52,4 +60,5 @@ urlpatterns = [
     path("projects/<int:project_id>/sessions/<str:session_id>/votes", VotacoesView.as_view(), name="vote_list"),
     path("projects/<int:project_id>/sessions/<str:session_id>/votes/<str:vote_id>/submit", VoteSubmissionView.as_view(), name="vote_submit"),
     path("projects/<int:project_id>/sessions/<str:session_id>/chat", SessionChatView.as_view(), name="session_chat"),
+
 ]
