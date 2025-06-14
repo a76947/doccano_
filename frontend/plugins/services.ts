@@ -42,8 +42,7 @@ export interface Services {
   voting : VotingApplicationService
   answer: AnswerRuleApplicationService
   ruleDiscussion: RuleDiscussionApplicationService
-
-
+  label: LabelApplicationService
 }
 
 declare module 'vue/types/vue' {
@@ -77,7 +76,8 @@ const plugin: Plugin = (_, inject) => {
 
     perspective: new PerspectiveApplicationService(repositories.perspective), // Add this line
     discrepancy: new DiscrepacieApplicationService(repositories.discrepancy), // Add this line
-    annotation: new AnnotationApplicationService(repositories.annotation)
+    annotation: new AnnotationApplicationService(repositories.annotation),
+    label: new LabelApplicationService(repositories.label)
   }
   inject('services', services)
 }
