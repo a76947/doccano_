@@ -30,7 +30,6 @@ import { APISegmentationRepository } from '~/repositories/tasks/apiSegmentationR
 // IMPORTA O TEU NOVO REPOSITÓRIO
 import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
 
-import { ApiDiscrepancieRepository } from '~/repositories/discrepancies/apiDiscrepancieRepository'
 
 import { APIAnnotationRepository } from '@/repositories/annotation/apiAnnotationRepository'
 import { ApiDiscrepancieRepository } from '~/repositories/discrepancies/apiDiscrepancieRepository'

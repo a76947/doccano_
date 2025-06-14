@@ -10,37 +10,44 @@ export default {
       type: Object,
       default: () => {},
       required: true
-    }
-  },
-
-  data() {
-    return {
-      options: {
-        scales: {
-          yAxes: [
-            {
-              barPercentage: 0.3
-            }
-          ],
-          xAxes: [
-            {
-              ticks: {
-                beginAtZero: true,
-                min: 0
-              }
-            }
-          ]
-        },
-        maintainAspectRatio: false,
-        legend: {
-          display: false
-        }
-      }
+    },
+    options: {
+      type: Object,
+      default: null
     }
   },
 
   mounted() {
-    this.renderChart(this.chartData, this.options)
+    // Use options from props if provided, otherwise use defaults
+    const chartOptions = this.options || {
+      scales: {
+        y: {
+          barPercentage: 0.3
+        },
+        x: {
+          ticks: {
+            beginAtZero: true,
+            min: 0
+          }
+        }
+      },
+      maintainAspectRatio: false,
+      legend: {
+        display: false
+      }
+    };
+    
+    this.renderChart(this.chartData, chartOptions)
+  },
+  
+  watch: {
+    // Re-render when options change
+    options: {
+      handler() {
+        this.renderChart(this.chartData, this.options || {})
+      },
+      deep: true
+    }
   }
 }
 </script>

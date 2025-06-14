@@ -12,7 +12,6 @@ import { UserApplicationService } from '~/services/application/user/userAplicati
 import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
 import { PerspectiveApplicationService } from '@/services/application/perspective/perspectiveApplicationService'
 
-import { DiscrepacieApplicationService } from '@/services/application/descrepancys/discrepanciesApplicationService'
 // Update with perspective property
 
 import { AnnotationApplicationService } from '@/services/application/annotation/annotationApplicationService'

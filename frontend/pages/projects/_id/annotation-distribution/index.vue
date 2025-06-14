@@ -28,15 +28,33 @@
                     <td>{{ _item.categoryCount || 0 }}</td>
                     <td>{{ _item.spanCount || 0 }}</td>
                     <td>{{ _item.relationCount || 0 }}</td>
-                    <td style="width: 60px">
+                    <td style="width: 80px">
                       <div style="height: 40px">
-                        <pie-chart
+                        <bar-chart
                           :chart-data="getChartData(_item)"
                           :options="{
                             responsive: true,
                             maintainAspectRatio: false,
                             legend: {
                               display: false
+                            },
+                            scales: {
+                              x: {
+                                display: false,
+                                stacked: true,
+                                ticks: {
+                                  display: false
+                                }
+                              },
+                              y: {
+                                display: false,
+                                stacked: true
+                              }
+                            },
+                            barPercentage: 1.0,
+                            categoryPercentage: 0.9,
+                            animation: {
+                              duration: 0
                             }
                           }"
                         />
@@ -54,11 +72,11 @@
   
   <script>
   import { mapGetters } from 'vuex'
-  import PieChart from '~/components/metrics/PieChart'
+  import BarChart from '~/components/metrics/ChartBar'
   
   export default {
     components: {
-      PieChart
+      BarChart
     },
   
     layout: 'project',
@@ -148,6 +166,7 @@
             url
           )
           this.datasetStats = stats
+          console.log('Dataset stats sample:', stats.entries[0])
         } catch (error) {
           console.error('Error fetching dataset stats:', error)
           this.$toasted.error('Failed to load dataset statistics')
@@ -208,43 +227,91 @@
         const labels = []
         const data = []
         const colors = ['#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#FF5722', '#795548']
-  
-        // Focus only on span labels
-        const spanDistribution = this.labelDistribution.spans || {}
-        const spanTypes = this.labelTypes.spans || []
-  
-        // For each span type, check if it's used in this document
-        spanTypes.forEach(spanType => {
-          let totalCount = 0
-          // Sum up all user annotations for this span type
-          Object.entries(spanDistribution).forEach(([_user, userDistribution]) => {
-            if (userDistribution && userDistribution[spanType.id]) {
-              totalCount += parseInt(userDistribution[spanType.id]) || 0
+        
+        // Check if we have manual labels for this document - these are the detailed annotations
+        if (!_item.labels || _item.labels.length === 0) {
+          // If no manual labels, create a simplified representation based on counts
+          if (_item.categoryCount > 0) {
+            // Since we know from logs we have category types, use them
+            if (this.labelTypes.categories && this.labelTypes.categories.length > 0) {
+              this.labelTypes.categories.forEach(cat => {
+                labels.push(cat.text)
+                // We don't know exact distribution, so use even distribution
+                data.push(Math.ceil(_item.categoryCount / this.labelTypes.categories.length))
+              })
+            } else {
+              labels.push('Categories')
+              data.push(_item.categoryCount)
             }
+          } else {
+            // No category data - show default
+            return {
+              labels: ['No Labels'],
+              datasets: [{
+                backgroundColor: ['#E0E0E0'],
+                data: [1],
+                barThickness: 20
+              }]
+            }
+          }
+        } else {
+          // We have detailed label information - process it
+          const labelCounts = {
+            category: {},
+            span: {},
+            relation: {}
+          }
+          
+          _item.labels.forEach(label => {
+            const type = label.type || 'unknown'
+            const id = label.label || 'unknown'
+            
+            if (!labelCounts[type]) {
+              labelCounts[type] = {}
+            }
+            
+            if (!labelCounts[type][id]) {
+              labelCounts[type][id] = 0
+            }
+            
+            labelCounts[type][id]++
           })
           
-          if (totalCount > 0) {
-            labels.push(spanType.text)
-            data.push(totalCount)
+          // Try categories first
+          let hasData = false
+          if (this.labelTypes.categories && this.labelTypes.categories.length > 0) {
+            Object.entries(labelCounts.category).forEach(([labelId, count]) => {
+              const categoryType = this.labelTypes.categories.find(
+                cat => cat.id.toString() === labelId.toString()
+              )
+              
+              if (categoryType) {
+                labels.push(categoryType.text)
+                data.push(count)
+                hasData = true
+              }
+            })
           }
-        })
-  
-        // If no labels found, show a placeholder
-        if (labels.length === 0) {
-          return {
-            labels: ['No Labels'],
-            datasets: [{
-              backgroundColor: ['#E0E0E0'],
-              data: [1]
-            }]
+          
+          // If still no data, show placeholder
+          if (!hasData) {
+            return {
+              labels: ['No Labels'],
+              datasets: [{
+                backgroundColor: ['#E0E0E0'],
+                data: [1],
+                barThickness: 20
+              }]
+            }
           }
         }
-  
+        
         return {
           labels,
           datasets: [{
             backgroundColor: colors.slice(0, labels.length),
-            data
+            data,
+            barThickness: 20
           }]
         }
       }
@@ -257,16 +324,20 @@
     margin-bottom: 1rem;
   }
   
-  /* Make the chart container smaller */
+  /* Make the chart container more visible */
   :deep(.chart-container) {
     height: 40px !important;
-    width: 60px !important;
+    width: 100% !important; 
     margin: 0 auto;
+    background-color: #f9f9f9;
+    border-radius: 3px;
+    overflow: visible !important;
   }
   
-  /* Hide the chart title */
-  :deep(.v-card__title) {
-    display: none !important;
+  /* Make bars clearly visible */
+  :deep(.chart-container canvas) {
+    height: 40px !important;
+    min-height: 40px !important;
+    min-width: 60px !important;
   }
   </style>
-  

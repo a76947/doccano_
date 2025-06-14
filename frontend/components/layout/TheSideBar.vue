@@ -38,8 +38,7 @@ import {
   mdiHome,
   mdiLabel,
   mdiPlayCircleOutline,
-  mdiHistory
-
+  mdiHistory,
   mdiViewDashboard,
   mdiAlertCircleOutline,
   mdiChartPie,
@@ -171,7 +170,8 @@ export default {
           icon: mdiHistory,
           text: 'Histórico das Regras',
           link: 'rules/history',
-
+        },
+        {
           icon: mdiChartPie,
           text: 'Annotation Distribution',
           link: 'annotation-distribution',
