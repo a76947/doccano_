@@ -39,7 +39,8 @@ import {
   mdiLabel,
   mdiPlayCircleOutline,
   mdiViewDashboard,
-  mdiAlertCircleOutline
+  mdiAlertCircleOutline,
+  mdiChartPie
 } from '@mdi/js'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
@@ -150,6 +151,12 @@ export default {
           icon: mdiChartBar,
           text: 'Votações',
           link: 'votacoes',
+          isVisible: true
+        },
+        {
+          icon: mdiChartPie,
+          text: 'Annotation Distribution',
+          link: 'annotation-distribution',
           isVisible: true
         }
       ]
