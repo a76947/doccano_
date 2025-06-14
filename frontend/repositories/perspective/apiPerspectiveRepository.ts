@@ -14,6 +14,7 @@ export class ApiPerspectiveRepository {
   }
 
   async createGroup(projectId: string | number, payload: any) {
+    console.log('aqui no repository', payload)
     const url = `/projects/${projectId}/perspective-groups/`
     const response = await ApiService.post(url, payload)
     return response.data

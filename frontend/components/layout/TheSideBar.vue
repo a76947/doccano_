@@ -38,6 +38,8 @@ import {
   mdiHome,
   mdiLabel,
   mdiPlayCircleOutline,
+  mdiHistory
+
   mdiViewDashboard,
   mdiAlertCircleOutline,
   mdiChartPie,
@@ -145,6 +147,8 @@ export default {
           link: 'report',
           isVisible: true
         },
+
+
         {
           icon: mdiCog,
           text: this.$t('settings.title'),
@@ -158,6 +162,16 @@ export default {
           isVisible: true
         },
         {
+          icon: mdiChartBar,
+          text: 'Regras',
+          link: 'rules',
+          isVisible: true
+        },
+        {
+          icon: mdiHistory,
+          text: 'Histórico das Regras',
+          link: 'rules/history',
+
           icon: mdiChartPie,
           text: 'Annotation Distribution',
           link: 'annotation-distribution',

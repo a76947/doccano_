@@ -12,6 +12,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.views import APIView
 
 from projects.models import Project, PerspectiveAnswer
+
 from projects.permissions import IsProjectAdmin, IsProjectStaffAndReadOnly
 from projects.serializers import ProjectPolymorphicSerializer
 
@@ -70,6 +71,7 @@ class CloneProject(views.APIView):
         cloned_project = project.clone()
         serializer = ProjectPolymorphicSerializer(cloned_project)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 
 class DiscrepancyAnalysisView(APIView):
@@ -200,3 +202,4 @@ class DiscrepancyAnalysisView(APIView):
                 {"detail": "An error occurred while processing your request."},
                 status=500
             )
+
