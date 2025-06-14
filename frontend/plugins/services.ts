@@ -11,6 +11,10 @@ import { SequenceLabelingApplicationService } from '@/services/application/tasks
 import { UserApplicationService } from '~/services/application/user/userAplicationService'
 import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
 import { PerspectiveApplicationService } from '@/services/application/perspective/perspectiveApplicationService'
+
+import { DiscrepacieApplicationService } from '@/services/application/descrepancys/discrepanciesApplicationService'
+// Update with perspective property
+
 import { AnnotationApplicationService } from '@/services/application/annotation/annotationApplicationService'
 import { DiscrepacieApplicationService } from '@/services/application/descrepancys/discrepanciesApplicationService'
 import { RulesApplicationService } from '~/services/application/rules/rulesApplicationService'
@@ -30,13 +34,17 @@ export interface Services {
   tag: TagApplicationService
   bbox: BoundingBoxApplicationService
   segmentation: SegmentationApplicationService
-  perspective: PerspectiveApplicationService
-  annotation: AnnotationApplicationService
+
+  perspective: PerspectiveApplicationService 
   discrepancy: DiscrepacieApplicationService
+
+  annotation: AnnotationApplicationService
   rules: RulesApplicationService
   voting : VotingApplicationService
   answer: AnswerRuleApplicationService
   ruleDiscussion: RuleDiscussionApplicationService
+
+
 }
 
 declare module 'vue/types/vue' {
@@ -63,13 +71,14 @@ const plugin: Plugin = (_, inject) => {
     bbox: new BoundingBoxApplicationService(repositories.boundingBox),
     segmentation: new SegmentationApplicationService(repositories.segmentation),
     user: new UserApplicationService(repositories.user),
-    perspective: new PerspectiveApplicationService(repositories.perspective),
-    annotation: new AnnotationApplicationService(repositories.annotation),
-    discrepancy: new DiscrepacieApplicationService(repositories.discrepancy),
     rules: new RulesApplicationService(repositories.rules),
     voting: new VotingApplicationService(repositories.voting),
     answer: new AnswerRuleApplicationService(repositories.answer),
     ruleDiscussion: new RuleDiscussionApplicationService(repositories.ruleDiscussion),
+
+    perspective: new PerspectiveApplicationService(repositories.perspective), // Add this line
+    discrepancy: new DiscrepacieApplicationService(repositories.discrepancy), // Add this line
+    annotation: new AnnotationApplicationService(repositories.annotation)
   }
   inject('services', services)
 }

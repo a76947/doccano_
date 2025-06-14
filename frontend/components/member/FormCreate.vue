@@ -93,9 +93,20 @@ export default Vue.extend({
   },
 
   async fetch() {
-    this.isLoading = true
-    this.users = await this.$repositories.user.list(this.username)
-    this.isLoading = false
+    try {
+      this.isLoading = true
+      const query = {
+        limit: '100',
+        offset: '0',
+        q: this.username
+      }
+      const response = await this.$repositories.user.list(query)
+      this.users = response.items || []
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    } finally {
+      this.isLoading = false
+    }
   },
 
   computed: {
@@ -108,10 +119,13 @@ export default Vue.extend({
           isSuperuser: false
         }
       },
-      set(val: MemberItem) {
-        if (val === undefined) return
-        const user = { user: val.id, username: val.username }
-        this.$emit('input', { ...this.value, ...user })
+      set(val: UserItem) {
+        if (!val) return
+        this.$emit('input', {
+          ...this.value,
+          user: val.id,
+          username: val.username
+        })
       }
     },
     role: {
@@ -122,26 +136,29 @@ export default Vue.extend({
         }
       },
       set(val: RoleItem) {
-        const role = { role: val.id, rolename: val.name }
-        this.$emit('input', { ...this.value, ...role })
+        if (!val) return
+        this.$emit('input', {
+          ...this.value,
+          role: val.id,
+          rolename: val.name
+        })
       }
     }
   },
 
   watch: {
     username() {
-      // Items have already been loaded
-      if (this.users.length > 0) return
-
-      // Items have already been requested
       if (this.isLoading) return
-
       this.$fetch()
     }
   },
 
   async created() {
-    this.roles = await this.$repositories.role.list()
+    try {
+      this.roles = await this.$repositories.role.list()
+    } catch (error) {
+      console.error('Error fetching roles:', error)
+    }
   }
 })
 </script>

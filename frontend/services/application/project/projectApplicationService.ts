@@ -129,4 +129,9 @@ export class ProjectApplicationService {
       throw new Error(e.response.data.detail)
     }
   }
+
+  public async getUsersWithProjects(): Promise<number[]> {
+    return await this.repository.getUsersWithProjects()
+  }
+  
 }

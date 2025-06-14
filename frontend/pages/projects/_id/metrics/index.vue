@@ -12,16 +12,24 @@
     </v-col>
     <v-col v-if="!!project.canDefineSpan" cols="12">
       <label-distribution
-        title="Span Distribution"
+        title="Label Distribution"
         :distribution="spanDistribution"
         :label-types="spanTypes"
       />
-    </v-col>
+    </v-col>  
     <v-col v-if="!!project.canDefineRelation" cols="12">
       <label-distribution
         title="Relation Distribution"
         :distribution="relationDistribution"
         :label-types="relationTypes"
+      />
+    </v-col>
+    <v-col cols="12">
+      <pie-chart-statistics 
+        :stats.sync="datasetStats" 
+        :loading.sync="loadingStats"
+        :project-id="projectId"
+        @update:stats="onStatsUpdated"
       />
     </v-col>
   </v-row>
@@ -31,11 +39,13 @@
 import { mapGetters } from 'vuex'
 import LabelDistribution from '~/components/metrics/LabelDistribution'
 import MemberProgress from '~/components/metrics/MemberProgress'
+import PieChartStatistics from '~/components/metrics/PieChartStatistics'
 
 export default {
   components: {
     LabelDistribution,
-    MemberProgress
+    MemberProgress,
+    PieChartStatistics
   },
 
   layout: 'project',
@@ -53,7 +63,14 @@ export default {
       relationTypes: [],
       relationDistribution: {},
       spanTypes: [],
-      spanDistribution: {}
+      spanDistribution: {},
+      datasetStats: {
+        total: 0,
+        annotated: 0,
+        unannotated: 0,
+        entries: []
+      },
+      loadingStats: false
     }
   },
 
@@ -81,6 +98,38 @@ export default {
       this.relationDistribution = await this.$repositories.metrics.fetchRelationDistribution(
         this.projectId
       )
+    }
+
+    // Add this line to load dataset statistics when the page loads
+    await this.fetchDatasetStats()
+  },
+
+  methods: {
+    async fetchDatasetStats() {
+      try {
+        this.loadingStats = true
+        const response = await this.$repositories.metrics.fetchDatasetStatistics(this.projectId)
+        this.datasetStats = response
+      } catch (error) {
+        this.$toasted.error('Failed to fetch dataset statistics')
+        console.error(error)
+      } finally {
+        this.loadingStats = false
+      }
+    },
+
+    onStatsUpdated(newStats) {
+      console.log('Parent received updated stats', {
+        total: newStats.total,
+        filtered: newStats.filtered,
+        annotated: newStats.annotated
+      });
+      // Create a new object to ensure reactivity
+      this.datasetStats = JSON.parse(JSON.stringify(newStats));
+    },
+
+    functionName() {
+      // code
     }
   }
 }

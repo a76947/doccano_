@@ -1,14 +1,36 @@
-from .serializers import CustomRegisterSerializer
-from django.contrib.auth.models import User
-from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, generics, status
+from rest_framework import generics, status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from .serializers import UserSerializer
+from rest_framework.generics import RetrieveDestroyAPIView
+from rest_framework.exceptions import ValidationError
+from django.contrib.auth.models import User
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
+from projects.models import Project
+from .serializers import UserSerializer, CustomRegisterSerializer
 from projects.permissions import IsProjectAdmin
+from dj_rest_auth.registration.serializers import RegisterSerializer
 
+class UsersWithProjectsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        projetos = Project.objects.all()
+
+        # DEBUG: Ver todos os criadores dos projetos
+        print("📦 Projetos encontrados:", projetos.count())
+        for p in projetos:
+            print(f"🔍 Projeto: {p.name} | Criado por: {p.created_by} (ID: {p.created_by_id})")
+
+        user_ids = (
+            Project.objects.exclude(created_by=None)
+            .values_list('created_by_id', flat=True)
+            .distinct()
+        )
+
+        print("✅ IDs de utilizadores com projetos:", list(user_ids))
+        return Response(user_ids)
 
 class Me(APIView):
     permission_classes = (IsAuthenticated,)
@@ -17,7 +39,6 @@ class Me(APIView):
         serializer = UserSerializer(request.user, context={"request": request})
         return Response(serializer.data)
 
-
 class Users(generics.ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -25,7 +46,6 @@ class Users(generics.ListAPIView):
     pagination_class = None
     filter_backends = (DjangoFilterBackend, filters.SearchFilter)
     search_fields = ("auth_user",)
-
 
 class UserCreation(generics.CreateAPIView):
     serializer_class = CustomRegisterSerializer
@@ -51,11 +71,19 @@ class UserCreation(generics.CreateAPIView):
         user = serializer.save(self.request)
         return user
 
-
-# UNIFICANDO retrieve, update e destroy
-class UserRetrieveUpdateDestroy(generics.RetrieveUpdateDestroyAPIView):
+class UserDetail(RetrieveDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated & IsAdminUser]
-    lookup_field = 'id'  # Se quiser /users/<int:id>/
-    # (Se preferir /users/<int:pk>/, troque para lookup_field='pk')
+    lookup_field = 'id'
+
+    def delete(self, request, *args, **kwargs):
+        user = self.get_object()
+
+        if Project.objects.filter(created_by=user).exists():
+            return Response(
+                {"detail": "Cannot delete user with projects."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        return super().delete(request, *args, **kwargs)

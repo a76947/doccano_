@@ -30,3 +30,14 @@ class PermissionListView(APIView):
         permissions = Permission.objects.all()
         serializer = PermissionSerializer(permissions, many=True)
         return Response(serializer.data)
+
+class GroupDeleteView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def delete(self, request, group_id):
+        try:
+            group = Group.objects.get(id=group_id)
+            group.delete()
+            return Response(status=204)
+        except Group.DoesNotExist:
+            return Response(status=404)

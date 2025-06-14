@@ -50,4 +50,9 @@ export class ApiPerspectiveRepository {
     return response.data
   }
 
+  async update(projectId: string | number, questionId: string | number, payload: any) {
+    const url = `/projects/${projectId}/perspectives/${questionId}/`
+    const response = await ApiService.put(url, payload)
+    return response.data
+  }
 }
