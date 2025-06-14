@@ -217,6 +217,13 @@
       <template #[`item.max_percentage`]="{ item }">
         <span class="percentage-value">{{ item.max_percentage.toFixed(2) }}%</span>
       </template>
+
+      <!-- Novo botão Discussão -->
+      <template #[`item.actions`]="{ item }">
+        <v-btn small color="primary" @click="goToDiscussion(item)">
+          Discussão
+        </v-btn>
+      </template>
     </v-data-table>
 
     <!-- Snackbars -->
@@ -260,7 +267,8 @@ export default {
         { text: 'Text', value: 'text', sortable: true },
         { text: 'Dataset Labels', value: 'labels', sortable: false },
         { text: 'Overall Status', value: 'is_discrepancy', sortable: true },
-        { text: 'Max Percentage', value: 'max_percentage', sortable: true }
+        { text: 'Max Percentage', value: 'max_percentage', sortable: true },
+        { text: 'Discussão', value: 'actions', sortable: false }
       ]
     };
   },
@@ -413,6 +421,10 @@ export default {
       this.$nextTick(() => {
         this.applyFilters()
       })
+    },
+
+    goToDiscussion(item) {
+      this.$router.push(this.localePath(`/projects/${this.projectId}/discrepancies/${item.id}`))
     }
   }
 };
