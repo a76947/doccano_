@@ -1,6 +1,7 @@
 import abc
+import json
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -82,12 +83,21 @@ class DatasetStatisticsAPI(APIView):
         annotation_filter = request.query_params.get('annotation_type')
         ordering = request.query_params.get('ordering', '-updated_at')  # Default sort by updated_at desc
         
-        # Get label filter parameters - THIS IS NEW
+        # Get label filter parameters
         label_type = request.query_params.get('label_type')
         label_id = request.query_params.get('label_id')
         
-        # Get assignee filter parameter - THIS IS NEW
+        # Get assignee filter parameter
         assignee = request.query_params.get('assignee') or request.query_params.get('username')
+
+        # Get perspective filters
+        perspective_filters = request.query_params.get('perspective_filters')
+        if perspective_filters:
+            try:
+                perspective_filters = json.loads(perspective_filters)
+            except json.JSONDecodeError:
+                print("Error decoding perspective filters JSON")
+                perspective_filters = None
         
         # Field name mapping from frontend to database
         field_mapping = {
@@ -127,6 +137,51 @@ class DatasetStatisticsAPI(APIView):
                     spans__isnull=True,
                     relations__isnull=True
                 )
+
+        # Apply perspective filters
+        if perspective_filters:
+            print(f"DEBUG: Applying perspective filters: {perspective_filters}")
+            initial_example_count = filtered_query.count()
+            print(f"DEBUG: Examples count before perspective filter: {initial_example_count}")
+            
+            combined_q_filters = Q()
+            has_any_perspective_filter = False
+
+            for question_id_str, selected_value in perspective_filters.items():
+                # If the selected_value is an empty list, skip this filter as it implies no specific selection.
+                if isinstance(selected_value, list) and len(selected_value) == 0:
+                    print(f"DEBUG: Skipping filter for Q{question_id_str} as selected value list is empty.")
+                    continue
+
+                has_any_perspective_filter = True
+                question_id = int(question_id_str)
+                
+                question_q = Q(perspective_answers__perspective__id=question_id)
+
+                if isinstance(selected_value, list):
+                    # For list of values (e.g., multi-select string/int options)
+                    answer_values_str = [str(v) for v in selected_value]
+                    answer_q = Q(perspective_answers__answer__in=answer_values_str)
+                    print(f"DEBUG: Building filter for Q{question_id_str} (list): {answer_values_str}")
+                elif isinstance(selected_value, bool):
+                    str_value = 'Yes' if selected_value else 'No'
+                    answer_q = Q(perspective_answers__answer=str_value)
+                    print(f"DEBUG: Building filter for Q{question_id_str} (bool): {str_value}")
+                else:
+                    # For single string/int value
+                    str_value = str(selected_value)
+                    from django.db.models import Value
+                    answer_q = Q(perspective_answers__answer=Value(str_value))
+                    print(f"DEBUG: Building filter for Q{question_id_str} (single): {str_value}")
+                
+                current_filter_q = question_q & answer_q
+                combined_q_filters &= current_filter_q
+            
+            if has_any_perspective_filter:
+                # Filter by the combined conditions and ensure distinct examples
+                filtered_query = filtered_query.filter(combined_q_filters).distinct()
+                print(f"DEBUG: Examples count AFTER perspective filter: {filtered_query.count()}")
+                print(f"DEBUG: Generated SQL Query (after perspective filter): {filtered_query.query}")
         
         # Label type and ID filtering
         if label_type and label_id:

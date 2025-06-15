@@ -3,7 +3,73 @@
     <v-row>
       <v-col cols="12">
         <v-card>
-          <v-card-title>Dataset Entries</v-card-title>
+          <v-card-title>
+            Dataset Entries
+            <v-spacer></v-spacer>
+            <!-- Add Perspective Filters -->
+            <v-dialog v-model="perspectiveFilterDialog" max-width="600px">
+              <template v-slot:activator="{ on, attrs }">
+                <v-btn
+                  color="primary"
+                  dark
+                  v-bind="attrs"
+                  v-on="on"
+                  class="mr-2"
+                >
+                  Filter by Perspective
+                </v-btn>
+              </template>
+              <v-card>
+                <v-card-title>Filter by Perspective</v-card-title>
+                <v-card-text>
+                  <v-container>
+                    <v-row v-for="group in perspectiveGroups" :key="group.id">
+                      <v-col cols="12">
+                        <h3>{{ group.name }}</h3>
+                        <v-row v-for="question in group.questions" :key="question.id">
+                          <v-col cols="12">
+                            <v-select
+                              v-if="question.data_type === 'string' && question.options.length > 0"
+                              v-model="selectedPerspectiveAnswers[question.id]"
+                              :items="question.options"
+                              :label="question.question"
+                              multiple
+                              chips
+                              deletable-chips
+                              clearable
+                            ></v-select>
+                            <v-select
+                              v-else-if="question.data_type === 'boolean'"
+                              v-model="selectedPerspectiveAnswers[question.id]"
+                              :items="['Yes', 'No']"
+                              :label="question.question"
+                              clearable
+                            ></v-select>
+                            <v-text-field
+                              v-else
+                              v-model="selectedPerspectiveAnswers[question.id]"
+                              :label="question.question"
+                              type="number"
+                              clearable
+                            ></v-text-field>
+                          </v-col>
+                        </v-row>
+                      </v-col>
+                    </v-row>
+                  </v-container>
+                </v-card-text>
+                <v-card-actions>
+                  <v-spacer></v-spacer>
+                  <v-btn color="primary" text @click="applyPerspectiveFilters">
+                    Apply Filters
+                  </v-btn>
+                  <v-btn text @click="clearPerspectiveFilters">
+                    Clear Filters
+                  </v-btn>
+                </v-card-actions>
+              </v-card>
+            </v-dialog>
+          </v-card-title>
           <v-card-text>
             <v-data-table
               :headers="headers"
@@ -129,7 +195,11 @@ export default {
       },
       labelDistribution: {},
       documentAnnotations: {}, // Cache for document annotations
-      annotationsRepository: new APIAnnotationRepository()
+      annotationsRepository: new APIAnnotationRepository(),
+      // Add new data properties for perspective filtering
+      perspectiveFilterDialog: false,
+      perspectiveGroups: [],
+      selectedPerspectiveAnswers: {}
     }
   },
 
@@ -163,7 +233,8 @@ export default {
     await Promise.all([
       this.fetchDatasetStats(),
       this.fetchLabelTypes(),
-      this.fetchLabelDistribution()
+      this.fetchLabelDistribution(),
+      this.fetchPerspectiveGroups()
     ])
 
     // Fetch annotations for all documents in the current page
@@ -187,6 +258,11 @@ export default {
         if (this.options.sortBy && this.options.sortBy.length > 0) {
           const sortDirection = this.options.sortDesc[0] ? '-' : ''
           params.append('ordering', `${sortDirection}${this.options.sortBy[0]}`)
+        }
+
+        // Add perspective filters to the query
+        if (Object.keys(this.selectedPerspectiveAnswers).length > 0) {
+          params.append('perspective_filters', JSON.stringify(this.selectedPerspectiveAnswers))
         }
 
         const queryString = params.toString()
@@ -405,6 +481,27 @@ export default {
       // Use the label name to generate a consistent index
       const index = labelName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
       return colors[index]
+    },
+
+    async fetchPerspectiveGroups() {
+      try {
+        const response = await this.$services.perspective.listPerspectiveGroups(this.projectId)
+        this.perspectiveGroups = response.results || response.data?.results || []
+      } catch (error) {
+        console.error('Error fetching perspective groups:', error)
+        this.$toasted.error('Failed to load perspective groups')
+      }
+    },
+
+    applyPerspectiveFilters() {
+      this.perspectiveFilterDialog = false
+      this.fetchDatasetStats()
+    },
+
+    clearPerspectiveFilters() {
+      this.selectedPerspectiveAnswers = {}
+      this.perspectiveFilterDialog = false
+      this.fetchDatasetStats()
     }
   }
 }
