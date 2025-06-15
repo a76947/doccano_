@@ -41,8 +41,12 @@ class BaseListAPI(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = self.label_class.objects.filter(example=self.kwargs["example_id"])
-        if not self.project.collaborative_annotation:
+        # Se tiver ?all=1 e o utilizador for admin do projecto, devolve todas as anotações
+        show_all = self.request.query_params.get("all") in ["1", "true", "True"]
+
+        if not self.project.collaborative_annotation and not (show_all and self.request.user.is_staff):
             queryset = queryset.filter(user=self.request.user)
+
         return queryset
 
     def create(self, request, *args, **kwargs):

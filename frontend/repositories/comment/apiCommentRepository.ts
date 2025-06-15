@@ -41,19 +41,22 @@ export class APICommentRepository {
     )
   }
 
-  async list(projectId: string, exampleId: number): Promise<CommentItem[]> {
-    const url = `/projects/${projectId}/comments?example=${exampleId}&limit=100`
+  async list(projectId: string, exampleId: number, labelId?: number): Promise<CommentItem[]> {
+    const labelPart = labelId !== undefined ? `&label=${labelId}` : ''
+    const url = `/projects/${projectId}/comments?example=${exampleId}${labelPart}&limit=100`
     const response = await this.request.get(url)
     return response.data.results.map((item: { [key: string]: any }) => toModel(item))
   }
 
-  async create(projectId: string, exampleId: number, text: string): Promise<CommentItem> {
-    const url = `/projects/${projectId}/comments?example=${exampleId}`
-    const response = await this.request.post(url, {
-      projectId,
-      exampleId,
-      text
-    })
+  async create(
+    projectId: string,
+    exampleId: number,
+    text: string,
+    labelId?: number
+  ): Promise<CommentItem> {
+    const labelPart = labelId !== undefined ? `&label=${labelId}` : ''
+    const url = `/projects/${projectId}/comments?example=${exampleId}${labelPart}`
+    const response = await this.request.post(url, { text })
     return toModel(response.data)
   }
 

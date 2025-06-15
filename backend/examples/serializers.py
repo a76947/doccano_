@@ -12,6 +12,7 @@ class CommentSerializer(serializers.ModelSerializer):
             "username",
             "example",
             "text",
+            "label",
             "created_at",
         )
         read_only_fields = ("user", "example")
