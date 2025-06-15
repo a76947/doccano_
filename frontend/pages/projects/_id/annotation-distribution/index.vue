@@ -1,343 +1,432 @@
 <template>
-    <v-container fluid>
-      <v-row>
-        <v-col cols="12">
-          <v-card>
-            <v-card-title>Dataset Entries</v-card-title>
-            <v-card-text>
-              <v-data-table
-                :headers="headers"
-                :items="datasetStats.entries"
-                :loading="loadingStats"
-                :options.sync="options"
-                :server-items-length="datasetStats.total"
-                class="elevation-1"
-              >
-                <template #item="{ item: _item }">
-                  <tr>
-                    <td>{{ _item.id }}</td>
-                    <td>{{ _item.text }}</td>
-                    <td>
-                      <v-chip
-                        :color="_item.annotated ? 'success' : 'warning'"
-                        small
-                      >
-                        {{ _item.annotated ? 'Annotated' : 'Pending' }}
-                      </v-chip>
-                    </td>
-                    <td>{{ _item.categoryCount || 0 }}</td>
-                    <td>{{ _item.spanCount || 0 }}</td>
-                    <td>{{ _item.relationCount || 0 }}</td>
-                    <td style="width: 80px">
-                      <div style="height: 40px">
-                        <bar-chart
-                          :chart-data="getChartData(_item)"
-                          :options="{
-                            responsive: true,
-                            maintainAspectRatio: false,
+  <v-container fluid>
+    <v-row>
+      <v-col cols="12">
+        <v-card>
+          <v-card-title>Dataset Entries</v-card-title>
+          <v-card-text>
+            <v-data-table
+              :headers="headers"
+              :items="datasetStats.entries"
+              :loading="loadingStats"
+              :options.sync="options"
+              :server-items-length="datasetStats.total"
+              class="elevation-1"
+            >
+              <template #item="{ item: _item }">
+                <tr>
+                  <td>{{ _item.id }}</td>
+                  <td>{{ _item.text }}</td>
+                  <td>
+                    <v-chip
+                      :color="_item.annotated ? 'success' : 'warning'"
+                      small
+                    >
+                      {{ _item.annotated ? 'Annotated' : 'Pending' }}
+                    </v-chip>
+                  </td>
+                  <td style="width: 150px">
+                    <div style="height: 120px; width: 100%; position: relative; margin: 0 auto;">
+                      <bar-chart
+                        :chart-data="getChartData(_item)"
+                        :options="{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
                             legend: {
                               display: false
                             },
-                            scales: {
-                              x: {
-                                display: false,
-                                stacked: true,
-                                ticks: {
-                                  display: false
+                            tooltip: {
+                              callbacks: {
+                                label: function(context) {
+                                  return context.dataset.label || context.label
                                 }
-                              },
-                              y: {
-                                display: false,
-                                stacked: true
+                              }
+                            }
+                          },
+                          scales: {
+                            x: {
+                              display: true,
+                              stacked: true,
+                              ticks: {
+                                display: true,
+                                font: {
+                                  size: 12
+                                }
                               }
                             },
-                            barPercentage: 1.0,
-                            categoryPercentage: 0.9,
-                            animation: {
-                              duration: 0
+                            y: {
+                              display: false,
+                              stacked: true,
+                              beginAtZero: true,
+                              max: 100
                             }
-                          }"
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                </template>
-              </v-data-table>
-            </v-card-text>
-          </v-card>
-        </v-col>
-      </v-row>
-    </v-container>
-  </template>
-  
-  <script>
-  import { mapGetters } from 'vuex'
-  import BarChart from '~/components/metrics/ChartBar'
-  
-  export default {
-    components: {
-      BarChart
-    },
-  
-    layout: 'project',
-  
-    middleware: ['check-auth', 'auth', 'setCurrentProject'],
-  
-    validate({ params }) {
-      return /^\d+$/.test(params.id)
-    },
-  
-    data() {
-      return {
-        datasetStats: {
-          total: 0,
-          annotated: 0,
-          unannotated: 0,
-          entries: []
-        },
-        loadingStats: false,
-        headers: [
-          { text: 'ID', value: 'id', width: '80px' },
-          { text: 'Text', value: 'text' },
-          { text: 'Status', value: 'status', width: '100px' },
-          { text: 'Categories', value: 'categoryCount', width: '100px' },
-          { text: 'Spans', value: 'spanCount', width: '100px' },
-          { text: 'Relations', value: 'relationCount', width: '100px' },
-          { text: 'Label Distribution', value: 'distribution', width: '100px' }
-        ],
-        options: {
-          sortBy: ['id'],
-          sortDesc: [false],
-          page: 1,
-          itemsPerPage: 10
-        },
-        labelTypes: {
-          categories: [],
-          spans: [],
-          relations: []
-        },
-        labelDistribution: {}
-      }
-    },
-  
-    computed: {
-      ...mapGetters('projects', ['project']),
-  
-      projectId() {
-        return this.$route.params.id
-      }
-    },
-  
-    watch: {
+                          },
+                          barPercentage: 1,
+                          categoryPercentage: 1,
+                          animation: {
+                            duration: 0
+                          }
+                        }"
+                        :height="118"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              </template>
+            </v-data-table>
+          </v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
+</template>
+
+<script>
+import { toRaw } from 'vue'
+import { mapGetters } from 'vuex'
+import BarChart from '~/components/metrics/ChartBar'
+import { APIAnnotationRepository } from '~/repositories/annotation/apiAnnotationRepository'
+
+export default {
+  components: {
+    BarChart
+  },
+
+  layout: 'project',
+
+  middleware: ['check-auth', 'auth', 'setCurrentProject'],
+
+  validate({ params }) {
+    return /^\d+$/.test(params.id)
+  },
+
+  data() {
+    return {
+      datasetStats: {
+        total: 0,
+        annotated: 0,
+        unannotated: 0,
+        entries: []
+      },
+      loadingStats: false,
+      headers: [
+        { text: 'ID', value: 'id', width: '80px' },
+        { text: 'Text', value: 'text' },
+        { text: 'Status', value: 'status', width: '100px' },
+        { text: 'Label Distribution', value: 'distribution', width: '100px' }
+      ],
       options: {
-        handler() {
-          this.fetchDatasetStats()
-        },
-        deep: true
+        sortBy: ['id'],
+        sortDesc: [false],
+        page: 1,
+        itemsPerPage: 10
+      },
+      labelTypes: {
+        categories: [],
+        spans: [],
+        relations: []
+      },
+      labelDistribution: {},
+      documentAnnotations: {}, // Cache for document annotations
+      annotationsRepository: new APIAnnotationRepository()
+    }
+  },
+
+  computed: {
+    ...mapGetters('projects', ['project']),
+    ...mapGetters('auth', ['getUsername', 'getUserId']),
+
+    projectId() {
+      return this.$route.params.id
+    }
+  },
+
+  watch: {
+    options: {
+      async handler() {
+        await this.fetchDatasetStats()
+        // Fetch annotations for new documents when page changes
+        if (this.datasetStats.entries) {
+          await Promise.all(
+            this.datasetStats.entries.map(entry => 
+              this.fetchDocumentAnnotations(entry.id)
+            )
+          )
+        }
+      },
+      deep: true
+    }
+  },
+
+  async created() {
+    await Promise.all([
+      this.fetchDatasetStats(),
+      this.fetchLabelTypes(),
+      this.fetchLabelDistribution()
+    ])
+
+    // Fetch annotations for all documents in the current page
+    if (this.datasetStats.entries) {
+      await Promise.all(
+        this.datasetStats.entries.map(entry => 
+          this.fetchDocumentAnnotations(entry.id)
+        )
+      )
+    }
+  },
+
+  methods: {
+    async fetchDatasetStats() {
+      this.loadingStats = true
+      try {
+        const params = new URLSearchParams()
+        params.append('page', this.options.page)
+        params.append('page_size', this.options.itemsPerPage)
+        
+        if (this.options.sortBy && this.options.sortBy.length > 0) {
+          const sortDirection = this.options.sortDesc[0] ? '-' : ''
+          params.append('ordering', `${sortDirection}${this.options.sortBy[0]}`)
+        }
+
+        const queryString = params.toString()
+        const url = queryString ? `?${queryString}` : ''
+
+        const stats = await this.$repositories.metrics.fetchDatasetStatistics(
+          this.projectId,
+          url
+        )
+        this.datasetStats = stats
+        console.log('Dataset stats sample:', stats.entries[0])
+      } catch (error) {
+        console.error('Error fetching dataset stats:', error)
+        this.$toasted.error('Failed to load dataset statistics')
+      } finally {
+        this.loadingStats = false
       }
     },
-  
-    async created() {
-      await Promise.all([
-        this.fetchDatasetStats(),
-        this.fetchLabelTypes(),
-        this.fetchLabelDistribution()
-      ])
+
+    async fetchLabelTypes() {
+      try {
+        const [categories, spans, relations] = await Promise.all([
+          this.$services.categoryType.list(this.projectId),
+          this.$services.spanType.list(this.projectId),
+          this.$services.relationType.list(this.projectId)
+        ])
+        
+        console.log('Raw categories from API:', categories)
+        console.log('Raw spans from API:', spans)
+        console.log('Raw relations from API:', relations)
+
+        this.labelTypes = {
+          categories,
+          spans,
+          relations
+        }
+      } catch (error) {
+        console.error('Error fetching label types:', error)
+      }
     },
-  
-    methods: {
-      async fetchDatasetStats() {
-        this.loadingStats = true
-        try {
-          const params = new URLSearchParams()
-          params.append('page', this.options.page)
-          params.append('page_size', this.options.itemsPerPage)
-          
-          if (this.options.sortBy && this.options.sortBy.length > 0) {
-            const sortDirection = this.options.sortDesc[0] ? '-' : ''
-            params.append('ordering', `${sortDirection}${this.options.sortBy[0]}`)
-          }
-  
-          const queryString = params.toString()
-          const url = queryString ? `?${queryString}` : ''
-  
-          const stats = await this.$repositories.metrics.fetchDatasetStatistics(
-            this.projectId,
-            url
-          )
-          this.datasetStats = stats
-          console.log('Dataset stats sample:', stats.entries[0])
-        } catch (error) {
-          console.error('Error fetching dataset stats:', error)
-          this.$toasted.error('Failed to load dataset statistics')
-        } finally {
-          this.loadingStats = false
+
+    async fetchLabelDistribution() {
+      try {
+        const [categoryDist, spanDist, relationDist] = await Promise.all([
+          this.$repositories.metrics.fetchCategoryDistribution(this.projectId),
+          this.$repositories.metrics.fetchSpanDistribution(this.projectId),
+          this.$repositories.metrics.fetchRelationDistribution(this.projectId)
+        ])
+
+        console.log('Raw category distribution:', JSON.stringify(categoryDist, null, 2))
+        console.log('Raw span distribution:', JSON.stringify(spanDist, null, 2))
+        console.log('Raw relation distribution:', JSON.stringify(relationDist, null, 2))
+
+        // Initialize the distribution object with empty objects for each user
+        this.labelDistribution = {
+          categories: categoryDist || {},
+          spans: spanDist || {},
+          relations: relationDist || {}
         }
-      },
-  
-      async fetchLabelTypes() {
-        try {
-          const [categories, spans, relations] = await Promise.all([
-            this.$services.categoryType.list(this.projectId),
-            this.$services.spanType.list(this.projectId),
-            this.$services.relationType.list(this.projectId)
-          ])
-          
-          console.log('Fetched label types:', {
-            categories,
-            spans,
-            relations
-          })
-  
-          this.labelTypes = {
-            categories,
-            spans,
-            relations
-          }
-        } catch (error) {
-          console.error('Error fetching label types:', error)
+      } catch (error) {
+        console.error('Error fetching label distribution:', error)
+        // Initialize with empty objects if there's an error
+        this.labelDistribution = {
+          categories: {},
+          spans: {},
+          relations: {}
         }
-      },
-  
-      async fetchLabelDistribution() {
-        try {
-          const [categoryDist, spanDist, relationDist] = await Promise.all([
-            this.$repositories.metrics.fetchCategoryDistribution(this.projectId),
-            this.$repositories.metrics.fetchSpanDistribution(this.projectId),
-            this.$repositories.metrics.fetchRelationDistribution(this.projectId)
-          ])
-  
-          console.log('Fetched distributions:', {
-            categories: categoryDist,
-            spans: spanDist,
-            relations: relationDist
-          })
-  
-          this.labelDistribution = {
-            categories: categoryDist,
-            spans: spanDist,
-            relations: relationDist
-          }
-        } catch (error) {
-          console.error('Error fetching label distribution:', error)
-        }
-      },
-  
-      getChartData(_item) {
-        const labels = []
-        const data = []
-        const colors = ['#4CAF50', '#2196F3', '#FFC107', '#9C27B0', '#FF5722', '#795548']
+      }
+    },
+
+    async fetchDocumentAnnotations(docId) {
+      if (this.documentAnnotations[docId]) {
+        return this.documentAnnotations[docId]
+      }
+
+      try {
+        // Get annotations for the current document
+        const url = `/projects/${this.projectId}/annotations?doc_id=${docId}`
+        const response = await this.$axios.get(url)
+        const annotations = response.data || []
         
-        // Check if we have manual labels for this document - these are the detailed annotations
-        if (!_item.labels || _item.labels.length === 0) {
-          // If no manual labels, create a simplified representation based on counts
-          if (_item.categoryCount > 0) {
-            // Since we know from logs we have category types, use them
-            if (this.labelTypes.categories && this.labelTypes.categories.length > 0) {
-              this.labelTypes.categories.forEach(cat => {
-                labels.push(cat.text)
-                // We don't know exact distribution, so use even distribution
-                data.push(Math.ceil(_item.categoryCount / this.labelTypes.categories.length))
-              })
-            } else {
-              labels.push('Categories')
-              data.push(_item.categoryCount)
-            }
-          } else {
-            // No category data - show default
-            return {
-              labels: ['No Labels'],
-              datasets: [{
-                backgroundColor: ['#E0E0E0'],
-                data: [1],
-                barThickness: 20
-              }]
-            }
-          }
-        } else {
-          // We have detailed label information - process it
-          const labelCounts = {
-            category: {},
-            span: {},
-            relation: {}
-          }
-          
-          _item.labels.forEach(label => {
-            const type = label.type || 'unknown'
-            const id = label.label || 'unknown'
-            
-            if (!labelCounts[type]) {
-              labelCounts[type] = {}
-            }
-            
-            if (!labelCounts[type][id]) {
-              labelCounts[type][id] = 0
-            }
-            
-            labelCounts[type][id]++
-          })
-          
-          // Try categories first
-          let hasData = false
-          if (this.labelTypes.categories && this.labelTypes.categories.length > 0) {
-            Object.entries(labelCounts.category).forEach(([labelId, count]) => {
-              const categoryType = this.labelTypes.categories.find(
-                cat => cat.id.toString() === labelId.toString()
-              )
-              
-              if (categoryType) {
-                labels.push(categoryType.text)
-                data.push(count)
-                hasData = true
-              }
-            })
-          }
-          
-          // If still no data, show placeholder
-          if (!hasData) {
-            return {
-              labels: ['No Labels'],
-              datasets: [{
-                backgroundColor: ['#E0E0E0'],
-                data: [1],
-                barThickness: 20
-              }]
-            }
-          }
-        }
+        // Ensure annotations is an array and filter for this document
+        const docAnnotations = Array.isArray(annotations) 
+        ? annotations.filter(ann => ann.example === docId) : []
         
+        // Store filtered annotations for this document
+        this.documentAnnotations[docId] = docAnnotations
+        return docAnnotations
+      } catch (error) {
+        console.error(`Error fetching annotations for document ${docId}:`, error)
+        return []
+      }
+    },
+
+    getChartData(_item) {
+      // Convert reactive object to raw data
+      const rawItem = toRaw(_item)
+      console.log('Processing item:', rawItem)
+      
+      // Get the category count from the raw item
+      const categoryCount = rawItem.categoryCount || 0
+      console.log('Category count:', categoryCount)
+
+      // If no categories, show empty state
+      if (categoryCount === 0) {
         return {
-          labels,
+          labels: ['No Labels'],
           datasets: [{
-            backgroundColor: colors.slice(0, labels.length),
-            data,
-            barThickness: 20
+            label: 'No Labels',
+            backgroundColor: ['#E0E0E0'],
+            data: [1],
+            barThickness: 45
           }]
         }
       }
+
+      // Get the raw category distribution
+      const rawCategoryDist = toRaw(this.labelDistribution?.categories)
+      console.log('Raw category distribution:', rawCategoryDist)
+
+      // Get the document's annotations
+      const annotations = this.documentAnnotations[rawItem.id] || []
+      console.log('Document annotations:', annotations)
+
+      // Get the raw label types
+      const rawLabelTypes = toRaw(this.labelTypes.categories)
+      console.log('Raw label types:', rawLabelTypes)
+
+      // First try to get the label from annotations
+      let labelName = null
+      let labelType = null
+
+      if (annotations.length > 0) {
+        // Get the first annotation's label
+        const firstAnnotation = annotations[0]
+        labelType = rawLabelTypes.find(lt => lt.id === firstAnnotation.label)
+        if (labelType) {
+          labelName = labelType.text
+        }
+      }
+
+      // If we couldn't find the label from annotations, try to get it from the distribution
+      if (!labelName && rawCategoryDist) {
+        // Get the document's position in the dataset
+        const docIndex = this.datasetStats.entries.findIndex(entry => entry.id === rawItem.id)
+        console.log('Document index:', docIndex)
+
+        if (docIndex !== -1) {
+          // Look through each user's distribution
+          for (const [, userDist] of Object.entries(rawCategoryDist)) {
+            // Find all labels that have a count > 0
+            const usedLabels = Object.entries(userDist)
+              .filter(([_, count]) => count > 0)
+              .map(([label]) => label)
+
+            // If we have exactly one label used, use it
+            if (usedLabels.length === 1) {
+              labelName = usedLabels[0]
+              labelType = rawLabelTypes.find(lt => lt.text === labelName)
+              break
+            }
+            // If we have multiple labels, use the one that matches our document's position
+            else if (usedLabels.length > 1) {
+              // Use the label at the document's position (modulo the number of labels)
+              const labelIndex = docIndex % usedLabels.length
+              labelName = usedLabels[labelIndex]
+              labelType = rawLabelTypes.find(lt => lt.text === labelName)
+              break
+            }
+          }
+        }
+      }
+
+      console.log('Found label for document:', labelName)
+
+      // If we found a label, use it
+      if (labelName && labelType) {
+        return {
+          labels: [labelName],
+          datasets: [{
+            label: labelName,
+            backgroundColor: [labelType.backgroundColor || this.getLabelColor(labelName)],
+            data: [categoryCount],
+            barThickness: 45
+          }]
+        }
+      }
+
+      // Fallback to generic category if we couldn't determine the label
+      return {
+        labels: ['Categories'],
+        datasets: [{
+          label: 'Categories',
+          backgroundColor: ['#4CAF50'],
+          data: [categoryCount],
+          barThickness: 45
+        }]
+      }
+    },
+
+    getLabelColor(labelName) {
+      // Generate a consistent color for each label name
+      const colors = [
+        '#4CAF50', // Green
+        '#2196F3', // Blue
+        '#FFC107', // Yellow
+        '#F44336', // Red
+        '#9C27B0', // Purple
+        '#00BCD4', // Cyan
+        '#FF9800', // Orange
+        '#795548', // Brown
+        '#607D8B', // Blue Grey
+        '#E91E63'  // Pink
+      ]
+      
+      // Use the label name to generate a consistent index
+      const index = labelName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length
+      return colors[index]
     }
   }
-  </script>
-  
-  <style scoped>
-  .v-card {
-    margin-bottom: 1rem;
-  }
-  
-  /* Make the chart container more visible */
-  :deep(.chart-container) {
-    height: 40px !important;
-    width: 100% !important; 
-    margin: 0 auto;
-    background-color: #f9f9f9;
-    border-radius: 3px;
-    overflow: visible !important;
-  }
-  
-  /* Make bars clearly visible */
-  :deep(.chart-container canvas) {
-    height: 40px !important;
-    min-height: 40px !important;
-    min-width: 60px !important;
-  }
-  </style>
+}
+</script>
+
+<style scoped>
+.v-card {
+  margin-bottom: 1rem;
+}
+
+/* Ensure the chart container clips content and is sized by its child */
+:deep(.chart-container) {
+  width: 100% !important; 
+  margin: 0 auto;
+  background-color: #f9f9f9;
+  border-radius: 6px;
+  overflow: hidden !important;
+}
+
+/* Ensure bars are fully visible */
+:deep(.chart-container canvas) {
+  min-height: 118px !important;
+  min-width: 60px !important;
+}
+</style>

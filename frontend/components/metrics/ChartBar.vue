@@ -1,53 +1,80 @@
 <script>
-import { HorizontalBar, mixins } from 'vue-chartjs'
-const { reactiveProp } = mixins
+import { Bar } from 'vue-chartjs'
 
 export default {
-  extends: HorizontalBar,
-  mixins: [reactiveProp],
+  name: 'BarChart',
+  extends: Bar,
   props: {
     chartData: {
       type: Object,
-      default: () => {},
       required: true
     },
     options: {
       type: Object,
-      default: null
+      default: () => ({})
+    }
+  },
+
+  data() {
+    return {
+      defaultOptions: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            display: false
+          },
+          x: {
+            display: false
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        barPercentage: 0.6,
+        categoryPercentage: 0.6
+      }
     }
   },
 
   mounted() {
-    // Use options from props if provided, otherwise use defaults
-    const chartOptions = this.options || {
-      scales: {
-        y: {
-          barPercentage: 0.3
-        },
-        x: {
-          ticks: {
-            beginAtZero: true,
-            min: 0
-          }
-        }
-      },
-      maintainAspectRatio: false,
-      legend: {
-        display: false
-      }
-    };
+    const chartOptions = {
+      ...this.defaultOptions,
+      ...this.options
+    }
     
     this.renderChart(this.chartData, chartOptions)
   },
   
   watch: {
-    // Re-render when options change
+    chartData: {
+      handler() {
+        this.renderChart(this.chartData, {
+          ...this.defaultOptions,
+          ...this.options
+        })
+      },
+      deep: true
+    },
     options: {
       handler() {
-        this.renderChart(this.chartData, this.options || {})
+        this.renderChart(this.chartData, {
+          ...this.defaultOptions,
+          ...this.options
+        })
       },
       deep: true
     }
   }
 }
 </script>
+
+<style scoped>
+.chart-container {
+  position: relative;
+  width: 100%;
+}
+</style>
