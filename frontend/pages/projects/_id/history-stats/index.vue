@@ -14,6 +14,7 @@
         hide-details
         class="me-2"
         style="max-width: 200px"
+        @change="onDatasetChange"
       />
 
       <!-- Select Versão -->
@@ -45,6 +46,60 @@
         </template>
         <v-date-picker v-model="before" @change="applyFilters" scrollable />
       </v-menu>
+
+      <!-- Button / dialog for filtering by Perspective answers -->
+      <v-dialog v-model="perspectiveFilterDialog" max-width="600px">
+        <template #activator="{ on, attrs }">
+          <v-btn color="primary" dark v-bind="attrs" v-on="on" class="me-2">
+            Filtrar por Perspectiva
+          </v-btn>
+        </template>
+        <v-card>
+          <v-card-title>Filtro de Perspectivas</v-card-title>
+          <v-card-text>
+            <v-container>
+              <v-row v-for="group in perspectiveGroups" :key="group.id">
+                <v-col cols="12">
+                  <h3>{{ group.name }}</h3>
+                  <v-row v-for="question in group.questions" :key="question.id">
+                    <v-col cols="12">
+                      <v-select
+                        v-if="question.data_type === 'string' && question.options.length > 0"
+                        v-model="selectedPerspectiveAnswers[question.id]"
+                        :items="question.options"
+                        :label="question.question"
+                        multiple
+                        chips
+                        deletable-chips
+                        clearable
+                      />
+                      <v-select
+                        v-else-if="question.data_type === 'boolean'"
+                        v-model="selectedPerspectiveAnswers[question.id]"
+                        :items="['Yes', 'No']"
+                        :label="question.question"
+                        clearable
+                      />
+                      <v-text-field
+                        v-else
+                        v-model="selectedPerspectiveAnswers[question.id]"
+                        :label="question.question"
+                        type="number"
+                        clearable
+                      />
+                    </v-col>
+                  </v-row>
+                </v-col>
+              </v-row>
+            </v-container>
+          </v-card-text>
+          <v-card-actions>
+            <v-spacer />
+            <v-btn color="primary" text @click="applyPerspectiveFilters">Aplicar</v-btn>
+            <v-btn text @click="clearPerspectiveFilters">Limpar</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </v-card-title>
 
     <!-- Slider de Progresso -->
@@ -126,7 +181,11 @@ export default {
       datasetOptions: [{ text: 'Dataset Principal', value: 'default' }],
       selectedDataset: 'default',
       versionOptions: [],
-      selectedVersion: null
+      selectedVersion: null,
+      // Perspective filters
+      perspectiveFilterDialog: false,
+      perspectiveGroups: [],
+      selectedPerspectiveAnswers: {}
     }
   },
   computed: {
@@ -139,6 +198,12 @@ export default {
     },
     beforeFormatted () { return this.before || '' }
   },
+  watch: {
+    // Always refetch stats when dataset changes via v-model (fallback in case @change fails)
+    selectedDataset () {
+      this.onDatasetChange()
+    }
+  },
   async mounted () {
     // load datasets
     try {
@@ -146,12 +211,35 @@ export default {
       if (this.datasetOptions.length) this.selectedDataset = this.datasetOptions[0].value
     } catch (e) { /* ignore */ }
     this.fetchStats()
+
+    // Load perspective groups for filters
+    try {
+      const response = await this.$services.perspective.listPerspectiveGroups(this.projectId)
+      this.perspectiveGroups = response.results || response.data?.results || []
+    } catch (e) {
+      // ignore errors silently for now
+      console.error('Failed to load perspective groups', e)
+    }
   },
   methods: {
+    onDatasetChange () {
+      // Reset selected version when dataset changes to avoid dangling version values
+      this.selectedVersion = null
+      this.applyFilters()
+    },
     buildParams () {
       const params = {}
+      // Apply dataset filter if selected
+      if (this.selectedDataset) {
+        params.dataset = this.selectedDataset
+      }
       if (this.before) params.before = this.before
       if (this.progress !== null && this.progress !== 100) params.progress = this.progress
+
+      // Perspective filters
+      if (Object.keys(this.selectedPerspectiveAnswers).length > 0) {
+        params.perspective_filters = JSON.stringify(this.selectedPerspectiveAnswers)
+      }
       return params
     },
     async fetchStats () {
@@ -160,6 +248,15 @@ export default {
     },
     applyFilters () {
       this.fetchStats()
+    },
+    applyPerspectiveFilters () {
+      this.perspectiveFilterDialog = false
+      this.applyFilters()
+    },
+    clearPerspectiveFilters () {
+      this.selectedPerspectiveAnswers = {}
+      this.perspectiveFilterDialog = false
+      this.applyFilters()
     }
   }
 }

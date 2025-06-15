@@ -1,6 +1,7 @@
 from datetime import datetime
+import json
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -28,6 +29,45 @@ class LabelVoteHistoryView(APIView):
 
     def get(self, request, project_id: int):
         qs = Category.objects.filter(example__project_id=project_id).order_by("created_at", "id")
+
+        # Optional dataset filter
+        dataset_param = request.query_params.get("dataset")
+        if dataset_param:
+            qs = qs.filter(example__upload_name=dataset_param)
+
+        # Optional perspective filters (JSON encoded)
+        perspective_param = request.query_params.get("perspective_filters")
+        if perspective_param:
+            try:
+                perspective_filters = json.loads(perspective_param)
+            except json.JSONDecodeError:
+                perspective_filters = None
+
+            if perspective_filters:
+                combined_q_filters = Q()
+                has_any_filter = False
+
+                for question_id, value in perspective_filters.items():
+                    # Skip if empty list (no specific selection)
+                    if isinstance(value, list) and len(value) == 0:
+                        continue
+
+                    has_any_filter = True
+
+                    if isinstance(value, list):
+                        answer_q = Q(example__perspective_answers__answer__in=[str(v) for v in value])
+                    elif isinstance(value, bool):
+                        answer_q = Q(example__perspective_answers__answer="Yes" if value else "No")
+                    else:
+                        answer_q = Q(example__perspective_answers__answer=str(value))
+
+                    current_q = (
+                        Q(example__perspective_answers__perspective__id=question_id) & answer_q
+                    )
+                    combined_q_filters &= current_q
+
+                if has_any_filter:
+                    qs = qs.filter(combined_q_filters).distinct()
 
         before_param = request.query_params.get("before")
         if before_param:
