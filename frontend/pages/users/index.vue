@@ -144,7 +144,7 @@ export default Vue.extend({
   },
 
   computed: {
-    ...mapGetters('auth', ['isStaff']),
+    ...mapGetters('auth', ['isStaff', 'getUserId']),
     currentUser() {
       const id = this.$store.getters['auth/getUserId']
       const username = this.$store.getters['auth/getUsername']
@@ -158,6 +158,9 @@ export default Vue.extend({
     },
     hasSelectedUserWithProjects() {
       return this.selected.some(user => this.usersWithProjects.includes(user.id))
+    },
+    selectedUser() {
+      return this.selected.length === 1 ? this.selected[0] : null
     }
   },
 
@@ -267,6 +270,12 @@ export default Vue.extend({
 
     onEditCancel() {
       this.dialogEdit = false
+    },
+
+    edit() {
+      if (this.canEdit) {
+        this.dialogEdit = true
+      }
     }
   }
 })

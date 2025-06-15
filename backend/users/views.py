@@ -2,7 +2,7 @@ from rest_framework import generics, status
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import RetrieveDestroyAPIView
+from rest_framework.generics import RetrieveUpdateDestroyAPIView
 from rest_framework.exceptions import ValidationError
 from django.contrib.auth.models import User
 from django_filters.rest_framework import DjangoFilterBackend
@@ -71,7 +71,7 @@ class UserCreation(generics.CreateAPIView):
         user = serializer.save(self.request)
         return user
 
-class UserDetail(RetrieveDestroyAPIView):
+class UserDetail(RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated & IsAdminUser]
