@@ -38,9 +38,13 @@ import {
   mdiHome,
   mdiLabel,
   mdiPlayCircleOutline,
+  mdiHistory,
   mdiViewDashboard,
   mdiAlertCircleOutline,
-  mdiHistory
+
+  mdiHistory,
+  mdiChartPie,
+  mdiChartBox
 } from '@mdi/js'
 import { getLinkToAnnotationPage } from '~/presenter/linkToAnnotationPage'
 
@@ -120,12 +124,14 @@ export default {
           link: 'metrics',
           isVisible: this.isProjectAdmin
         },
+
         {
           icon: mdiHistory,
           text: 'History of Annotations',
           link: 'annotation-history',
           isVisible: true
         },
+
         {
           icon: mdiViewDashboard,
           text: 'Perspetivas',
@@ -136,7 +142,7 @@ export default {
           icon: mdiDatabase,
           text: 'Perspetivas',
           link: 'perspectives',
-          isVisible: !this.isProjectAdmin// modificar
+          isVisible: !this.isProjectAdmin
         },
         {
           icon: mdiAlertCircleOutline,
@@ -145,11 +151,22 @@ export default {
           isVisible: this.isProjectAdmin
         },
         {
-          icon: mdiChartBar,
-          text: 'Estatísticas de Anotações',
-          link: 'annotation-statistics',
+
+          icon: mdiChartBox,
+          text: 'Relatórios',
+          link: 'report',
           isVisible: true
         },
+
+
+        {
+          icon: mdiDatabase,
+          text: 'Discrepâncias',
+          link: 'discrepancies',
+          isVisible: true
+        },
+
+
         {
           icon: mdiCog,
           text: this.$t('settings.title'),
@@ -160,6 +177,29 @@ export default {
           icon: mdiChartBar,
           text: 'Votações',
           link: 'votacoes',
+          isVisible: true
+        },
+        {
+          icon: mdiChartBar,
+          text: 'Regras',
+          link: 'rules',
+          isVisible: true
+        },
+        {
+          icon: mdiHistory,
+          text: 'Histórico das Regras',
+          link: 'rules/history',
+        },
+        {
+          icon: mdiChartPie,
+          text: 'Annotation Distribution',
+          link: 'annotation-distribution',
+          isVisible: true
+        },
+        {
+          icon: mdiChartBar,
+          text: 'Estatísticas do Histórico',
+          link: 'history-stats',
           isVisible: true
         }
       ]

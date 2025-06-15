@@ -247,6 +247,13 @@
       <template #[`item.max_percentage`]="{ item }">
         <span class="percentage-value">{{ item.max_percentage.toFixed(2) }}%</span>
       </template>
+
+      <!-- Novo botão Discussão -->
+      <template #[`item.actions`]="{ item }">
+        <v-btn small color="primary" @click="goToDiscussion(item)">
+          Discussão
+        </v-btn>
+      </template>
     </v-data-table>
 
     <!-- Snackbars -->
@@ -290,7 +297,8 @@ export default {
         { text: 'Text', value: 'text', sortable: true },
         { text: 'Dataset Labels', value: 'labels', sortable: false },
         { text: 'Overall Status', value: 'is_discrepancy', sortable: true },
-        { text: 'Max Percentage', value: 'max_percentage', sortable: true }
+        { text: 'Max Percentage', value: 'max_percentage', sortable: true },
+        { text: 'Discussão', value: 'actions', sortable: false }
       ]
     };
   },
@@ -306,68 +314,79 @@ export default {
       });
     },
     filteredDiscrepancies() {
-      let filtered = [...this.discrepancies]
-      
-      // Aplicar filtros de perspectiva
-      const hasPerspectiveFilters = Object.keys(this.selectedAnswers).length > 0
-      
-      if (hasPerspectiveFilters) {
-        filtered = filtered.filter(discrepancy => {
-          // Verificar se a discrepância tem respostas de perspectiva
-          if (!discrepancy.perspective_answers || 
-          Object.keys(discrepancy.perspective_answers).length === 0) {
-            return false
-          }
+  let filtered = [...this.discrepancies];
 
-          // Para cada filtro selecionado
-          for (const [questionId, selectedValues] of Object.entries(this.selectedAnswers)) {
-            if (!selectedValues || selectedValues.length === 0) continue
+  const hasPerspectiveFilters = Object.keys(this.selectedAnswers).length > 0;
 
-            const questionAnswer = discrepancy.perspective_answers[questionId]
-            
-            // Se não houver resposta para esta pergunta, não incluir
-            if (!questionAnswer) {
-              return false
-            }
+  if (hasPerspectiveFilters) {
+    filtered = filtered.filter(discrepancy => {
+      const perspectiveAnswers = discrepancy.perspective_answers || {};
+      const annotators = discrepancy.annotators || [];
 
-            // Para booleanos
-            if (Array.isArray(selectedValues) && selectedValues.includes(true) || 
-            selectedValues.includes(false)) {
-              const hasTrue = selectedValues.includes(true)
-              const hasFalse = selectedValues.includes(false)
-              
-              // Se a resposta não corresponder a nenhum dos valores selecionados
-              if ((hasTrue && questionAnswer !== 'true') && (hasFalse && questionAnswer !== 'false')) {
-                return false
+      for (const [selectedQuestionId, selectedValue] of Object.entries(this.selectedAnswers)) {
+        if (
+          selectedValue === null ||
+          selectedValue === undefined ||
+          (Array.isArray(selectedValue) && selectedValue.length === 0)
+        ) continue;
+
+        let matchFound = false;
+
+        for (const group of Object.values(perspectiveAnswers)) {
+          for (const [questionId, answersByAnnotator] of Object.entries(group)) {
+            if (questionId !== selectedQuestionId) continue;
+
+            for (const annotatorId of annotators) {
+              const rawAnswer = answersByAnnotator[annotatorId];
+
+              if (rawAnswer !== undefined) {
+                if (Array.isArray(selectedValue)) {
+                  if (selectedValue.includes(rawAnswer)) {
+                    matchFound = true;
+                    break;
+                  }
+                } else {
+                  // booleano (corrigido!)
+                  const answerStr = rawAnswer.toLowerCase?.();
+                  const answerBool =
+                    answerStr === 'true' || answerStr === 'yes'
+                      ? true
+                      : answerStr === 'false' || answerStr === 'no'
+                      ? false
+                      : null;
+
+                  if (answerBool === null) continue;
+
+                  if (selectedValue === answerBool) {
+                    matchFound = true;
+                    break;
+                  }
+                }
               }
             }
-            // Para string/int
-            else if (Array.isArray(selectedValues)) {
-              if (!selectedValues.includes(questionAnswer)) {
-                return false
-              }
-            }
+            if (matchFound) break;
           }
-          return true
-        })
+          if (matchFound) break;
+        }
+
+        if (!matchFound) return false;
       }
 
-      // Aplicar ordenação
-      if (this.sortOrder) {
-        filtered.sort((a, b) => {
-          const aValue = a.max_percentage
-          const bValue = b.max_percentage
-          
-          if (this.sortOrder === 'asc') {
-            return bValue - aValue
-          }
-          
-          return aValue - bValue
-        })
-      }
+      return true;
+    });
+  }
 
-      return filtered
-    },
+  if (this.sortOrder) {
+    filtered.sort((a, b) =>
+      this.sortOrder === 'asc'
+        ? a.max_percentage - b.max_percentage
+        : b.max_percentage - a.max_percentage
+    );
+  }
+
+  return filtered;
+}
+,
     hasActiveFilters() {
       return Object.values(this.selectedAnswers).some(values => {
         if (Array.isArray(values)) {
@@ -460,6 +479,10 @@ export default {
       this.$nextTick(() => {
         this.applyFilters()
       })
+    },
+
+    goToDiscussion(item) {
+      this.$router.push(this.localePath(`/projects/${this.projectId}/discrepancies/${item.id}`))
     }
   }
 };

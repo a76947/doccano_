@@ -20,6 +20,10 @@ from .models import (
     Perspective,
     PerspectiveAnswer,
     PerspectiveGroup,
+    ToSubmitQuestions,
+    VotingSession,
+    VotingSessionAnswer,
+    RuleDiscussionMessage,
 )
 
 
@@ -202,7 +206,7 @@ class PerspectiveAnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = PerspectiveAnswer
         fields = [
-            'id', 'perspective', 'project', 'answer', 
+            'id', 'perspective', 'project', 'example', 'answer', 
             'created_by', 'created_by_username', 'created_at'
         ]
     
@@ -220,3 +224,36 @@ class PerspectiveAnswerSerializer(serializers.ModelSerializer):
         # Otherwise return current time
         from django.utils import timezone
         return timezone.now()
+
+
+
+
+class VotingSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VotingSession
+        fields = ['id', 'project', 'questions', 'created_at', 'vote_end_date', 'finish']
+        read_only_fields = ['id', 'created_at']
+
+class VotingSessionAnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VotingSessionAnswer
+        fields = ['id', 'voting_session', 'project', 'created_by', 'answer']
+        read_only_fields = ['id', 'created_by']
+
+    def validate_answer(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Answer must be provided as a list of strings.")
+        for item in value:
+            if not isinstance(item, str):
+                raise serializers.ValidationError("Each answer must be a string.")
+        return value
+
+class RuleDiscussionSerializer(serializers.ModelSerializer):
+    """Serializer for chat messages exchanged while discussing rules."""
+    username = serializers.CharField(source='created_by.username', read_only=True)
+
+    class Meta:
+        model = RuleDiscussionMessage  # type: ignore  # defined in models
+        fields = ['id', 'message', 'username', 'created_at']
+        read_only_fields = ['id', 'username', 'created_at']
+

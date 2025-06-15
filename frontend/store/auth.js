@@ -97,5 +97,15 @@ export const actions = {
     if (process.browser) {
       window.location = '/auth'
     }
+  },
+
+  // Fetch social login links
+  async fetchSocialLink() {
+    try {
+      return await this.$repositories.auth.socialLink()
+    } catch (error) {
+      console.error('Error fetching social links:', error)
+      return {}
+    }
   }
 } 

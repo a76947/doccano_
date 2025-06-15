@@ -264,6 +264,10 @@
 
    
 
+   
+
+   
+
     <!-- Answer Questions Dialog -->
     <v-dialog v-model="dialogAnswer" max-width="600px">
       <v-card>
@@ -285,6 +289,34 @@
           <v-spacer/>
           <v-btn text @click="dialogAnswer = false">Cancel</v-btn>
           <v-btn color="success" text @click="saveAnswers">Submit</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Select Example Dialog -->
+    <v-dialog v-model="dialogSelectExample" max-width="500px">
+      <v-card>
+        <v-card-title class="headline">Select an Example</v-card-title>
+        <v-card-text>
+          <p class="mb-4">Please select an example to answer the questions for:</p>
+          <v-list>
+            <v-list-item
+              v-for="example in examples"
+              :key="example.id"
+              @click="selectExampleAndContinue(example)"
+            >
+              <v-list-item-content>
+                <v-list-item-title>{{ example.text || `Example ${example.id}` }}</v-list-item-title>
+                <v-list-item-subtitle v-if="example.metadata">
+                  {{ example.metadata.description || '' }}
+                </v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer/>
+          <v-btn text @click="dialogSelectExample = false">Cancel</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -553,6 +585,7 @@ export default {
 
       knownUsers: [],
 
+
       // Delete Group
       dialogDeleteGroup: false,
       deletingGroup: null,
@@ -562,6 +595,11 @@ export default {
       dialogDeleteQuestion: false,
       deletingQuestion: null,
       deletingQuestionGroup: null
+
+      examples: [],
+      selectedExample: null,
+      dialogSelectExample: false
+
     }
   },
 
@@ -760,16 +798,24 @@ export default {
     openAnswerDialog(group) {
       this.currentGroup = group
       this.answers = {}
-      // Log para debug
-      console.log('Opening answer dialog for group:', group)
-      console.log('Group questions:', group.questions)
       
-      group.questions.forEach(q => {
+      // Inicializa as respostas para cada pergunta
+      this.currentGroup.questions.forEach(q => {
         this.answers[q.id] = null
       })
       
-      // Log para debug
-      console.log('Initialized answers object:', this.answers)
+      // Abre diretamente o diálogo de respostas
+      this.dialogAnswer = true
+    },
+
+    selectExampleAndContinue(example) {
+      this.selectedExample = example
+      this.dialogSelectExample = false
+      
+      // Inicializa as respostas para cada pergunta
+      this.currentGroup.questions.forEach(q => {
+        this.answers[q.id] = null
+      })
       
       this.dialogAnswer = true
     },
@@ -778,45 +824,65 @@ export default {
       try {
         const answersToSave = []
         
-        // Log para debug
+        console.log('Starting saveAnswers process...')
         console.log('Current answers:', this.answers)
+        console.log('Current project ID:', this.projectId)
+        
+        // Se não houver exemplo selecionado, tentamos obter o exemplo atual
+        if (!this.selectedExample) {
+          try {
+            console.log('Attempting to get current example...')
+            this.selectedExample = await this.$services.example.getCurrentExample(this.projectId)
+            console.log('Current example response:', this.selectedExample)
+          } catch (error) {
+            console.error('Error getting current example:', error)
+            // Continua mesmo sem exemplo, pois não é obrigatório
+          }
+        }
         
         for (const [questionId, answer] of Object.entries(this.answers)) {
-          if (answer === null || answer === '') continue
+          if (answer === null || answer === '') {
+            console.log('Skipping empty answer for question:', questionId)
+            continue
+          }
           
           const answerData = {
             perspective: parseInt(questionId),
             project: parseInt(this.projectId),
             answer: String(answer)
           }
+
+          // Adiciona o exemplo apenas se estiver disponível
+          if (this.selectedExample && this.selectedExample.id) {
+            answerData.example = this.selectedExample.id
+          }
           
-          // Log para debug
           console.log('Preparing answer data:', answerData)
-          
           answersToSave.push(answerData)
         }
         
         if (answersToSave.length === 0) {
+          console.error('No valid answers to save')
           this.snackbarErrorMessage = 'Please answer at least one question'
           this.snackbarError = true
           return
         }
         
-        // Log para debug
-        console.log('Answers to save:', answersToSave)
+        console.log('Attempting to save answers:', answersToSave)
         
         const service = usePerspectiveApplicationService()
         for (const answer of answersToSave) {
           try {
-            // Log para debug
             console.log('Submitting answer:', answer)
-            
-            await service.createPerspectiveAnswer(this.projectId, answer)
-            
-            // Log para debug
-            console.log('Answer submitted successfully')
+            const response = await service.createPerspectiveAnswer(this.projectId, answer)
+            console.log('Answer submission response:', response)
           } catch (answerError) {
             console.error('Error submitting individual answer:', answerError)
+            console.error('Error details:', {
+              message: answerError.message,
+              response: answerError.response?.data,
+              status: answerError.response?.status
+            })
             throw answerError
           }
         }
@@ -825,6 +891,7 @@ export default {
         this.snackbar = true
         this.dialogAnswer = false
         this.answers = {} // Clear answers after successful submission
+        this.selectedExample = null // Clear selected example
       } catch (e) {
         console.error('Error saving answers:', e)
         console.error('Error details:', {

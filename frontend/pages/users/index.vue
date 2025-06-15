@@ -5,7 +5,7 @@
         <v-btn
           class="text-capitalize"
           color="primary"
-          @click.stop="$router.push('projects/create')"
+          @click.stop="$router.push('users/create')"
         >
           {{ $t('generic.create') }}
         </v-btn>

@@ -10,8 +10,10 @@ from examples.models import Example
 from django.db.models import Count
 from rest_framework.exceptions import NotFound
 from rest_framework.views import APIView
+from collections import defaultdict
 
-from projects.models import Project
+from projects.models import Project, PerspectiveAnswer
+
 from projects.permissions import IsProjectAdmin, IsProjectStaffAndReadOnly
 from projects.serializers import ProjectPolymorphicSerializer
 
@@ -77,32 +79,141 @@ class DiscrepancyAnalysisView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, project_id):
-        project = get_object_or_404(Project, id=project_id)
-        # Valor fixo de discrepância
-        discrepancy_threshold = 70
-        examples = Example.objects.filter(project_id=project_id)
+        try:
+            project = get_object_or_404(Project, id=project_id)
+            discrepancy_threshold = 70
+            examples = Example.objects.filter(project_id=project_id)
 
-        if not examples.exists():
-            raise NotFound("No examples found for this project.")
+            if not examples.exists():
+                raise NotFound("No examples found for this project.")
 
-        discrepancies = []
-        for example in examples:
-            labels = example.categories.values('label', 'label__text').annotate(count=Count('label'))
-            total_labels = sum(label['count'] for label in labels)
+            # Obter parâmetros de filtro da URL
+            filter_perspective = request.query_params.get('perspective')
+            filter_answer = request.query_params.get('answer')
 
-            if total_labels > 0:
-                percentages = {label['label__text']: (label['count'] / total_labels) * 100 for label in labels}
-                max_percentage = max(percentages.values())
+            discrepancies = []
+            for example in examples:
+                # Obter anotações com informações do usuário
+                labels = example.categories.values(
+                    'label', 
+                    'label__text', 
+                    'user'
+                ).annotate(count=Count('label'))
+                
+                total_labels = sum(label['count'] for label in labels)
+                if total_labels == 0:
+                    continue
 
-                # Sempre incluir o exemplo, mas marcar se é uma discrepância
-                discrepancies.append({
+                # Obter usuários que anotaram este exemplo
+                all_annotators = set(label['user'] for label in labels if label['user'])
+                
+                # Se houver filtro, filtrar os anotadores que deram a resposta específica
+                if filter_perspective and filter_answer:
+                    # Buscar todas as respostas das perspectivas para os anotadores
+                    perspective_answers = {}
+                    matching_annotators = set()
+                    
+                    for annotator_id in all_annotators:
+                        user_responses = PerspectiveAnswer.objects.filter(
+                            project_id=project_id,
+                            created_by_id=annotator_id
+                        ).select_related('perspective', 'perspective__group')
+                        
+                        has_matching_answer = False
+                        
+                        for response in user_responses:
+                            group_id = str(response.perspective.group.id)
+                            question_id = str(response.perspective.id)
+                            
+                            # Inicializar estrutura se necessário
+                            if group_id not in perspective_answers:
+                                perspective_answers[group_id] = {}
+                            if question_id not in perspective_answers[group_id]:
+                                perspective_answers[group_id][question_id] = {}
+                            
+                            # Adicionar resposta do anotador
+                            perspective_answers[group_id][question_id][str(annotator_id)] = response.answer
+                            
+                            # Verificar se esta resposta corresponde ao filtro
+                            if (question_id == filter_perspective and 
+                                response.answer == filter_answer):
+                                has_matching_answer = True
+                        
+                        if has_matching_answer:
+                            matching_annotators.add(annotator_id)
+                    
+                    # Se não houver anotadores que deram a resposta específica, pular este exemplo
+                    if not matching_annotators:
+                        continue
+                        
+                    # Filtrar as anotações para incluir apenas os anotadores que deram a resposta correta
+                    labels = [label for label in labels if label['user'] in matching_annotators]
+                    
+                    # Recalcular totais e percentagens agregando por label
+                    aggregated = defaultdict(int)
+                    for label in labels:
+                        aggregated[label['label__text']] += label['count']
+
+                    total_labels = sum(aggregated.values())
+                    if total_labels == 0:
+                        continue
+
+                    percentages = {k: (v / total_labels) * 100 for k, v in aggregated.items()}
+                    max_percentage = max(percentages.values())
+                    annotators = matching_annotators
+                else:
+                    # Agrupar contagens por label para considerar todos os usuários
+                    aggregated = defaultdict(int)
+                    for label in labels:
+                        aggregated[label['label__text']] += label['count']
+
+                    total_labels = sum(aggregated.values())
+                    if total_labels == 0:
+                        continue
+
+                    percentages = {k: (v / total_labels) * 100 for k, v in aggregated.items()}
+                    max_percentage = max(percentages.values())
+                    annotators = all_annotators
+                    
+                    # Buscar respostas das perspectivas para todos os anotadores
+                    perspective_answers = {}
+                    for annotator_id in annotators:
+                        user_responses = PerspectiveAnswer.objects.filter(
+                            project_id=project_id,
+                            created_by_id=annotator_id
+                        ).select_related('perspective', 'perspective__group')
+                        
+                        for response in user_responses:
+                            group_id = str(response.perspective.group.id)
+                            question_id = str(response.perspective.id)
+                            
+                            # Inicializar estrutura se necessário
+                            if group_id not in perspective_answers:
+                                perspective_answers[group_id] = {}
+                            if question_id not in perspective_answers[group_id]:
+                                perspective_answers[group_id][question_id] = {}
+                            
+                            # Adicionar resposta do anotador
+                            perspective_answers[group_id][question_id][str(annotator_id)] = response.answer
+
+                discrepancy = {
                     "id": example.id,
                     "text": example.text,
                     "percentages": percentages,
                     "is_discrepancy": max_percentage < discrepancy_threshold,
-                    "max_percentage": max_percentage
-                })
+                    "max_percentage": max_percentage,
+                    "perspective_answers": perspective_answers,
+                    "annotators": list(annotators)
+                }
+                
+                discrepancies.append(discrepancy)
 
-        return Response({
-            "discrepancies": discrepancies
-        })
+            return Response({"discrepancies": discrepancies})
+            
+        except Exception as e:
+            print(f"Error in DiscrepancyAnalysisView: {str(e)}")
+            return Response(
+                {"detail": "An error occurred while processing your request."},
+                status=500
+            )
+
