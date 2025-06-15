@@ -149,6 +149,13 @@ export default {
 
 
         {
+          icon: mdiDatabase,
+          text: 'Discrepâncias',
+          link: 'discrepancies',
+          isVisible: true
+        },
+
+        {
           icon: mdiCog,
           text: this.$t('settings.title'),
           link: 'settings',
