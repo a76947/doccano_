@@ -105,6 +105,7 @@ export interface Repositories {
 
   ruleDiscussion: ApiRuleDiscussionRepository
 
+  label: APILabelRepository
 }
 
 declare module 'vue/types/vue' {
@@ -176,9 +177,9 @@ const repositories: Repositories = {
 
   ruleDiscussion: new ApiRuleDiscussionRepository(),
 
-  annotation: new APIAnnotationRepository()
+  annotation: new APIAnnotationRepository(),
 
- 
+  label: new APILabelRepository()
 }
 
 const plugin: Plugin = (_, inject) => {

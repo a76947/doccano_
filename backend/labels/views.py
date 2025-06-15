@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from .permissions import CanEditLabel
 from .serializers import (
@@ -145,3 +146,46 @@ class SegmentationListAPI(BaseListAPI):
 class SegmentationDetailAPI(BaseDetailAPI):
     queryset = Segmentation.objects.all()
     serializer_class = SegmentationSerializer
+
+
+class ProjectLabelsAPI(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, project_id):
+        project = get_object_or_404(Project, pk=project_id)
+
+        categories = Category.objects.filter(example__project=project)
+        spans = Span.objects.filter(example__project=project)
+        text_labels = TextLabel.objects.filter(example__project=project)
+        relations = Relation.objects.filter(example__project=project)
+        bounding_boxes = BoundingBox.objects.filter(example__project=project)
+        segmentations = Segmentation.objects.filter(example__project=project)
+
+        labels = {
+            "categories": [
+                {"label": category.label.text, "user": category.user.username}
+                for category in categories
+            ],
+            "spans": [
+                {"label": span.label.text, "user": span.user.username}
+                for span in spans
+            ],
+            "text_labels": [
+                {"label": text_label.text, "user": text_label.user.username}
+                for text_label in text_labels
+            ],
+            "relations": [
+                {"label": relation.type.text, "user": relation.user.username}
+                for relation in relations
+            ],
+            "bounding_boxes": [
+                {"label": bbox.label.text, "user": bbox.user.username}
+                for bbox in bounding_boxes
+            ],
+            "segmentations": [
+                {"label": segmentation.label.text, "user": segmentation.user.username}
+                for segmentation in segmentations
+            ],
+        }
+
+        return Response(labels)

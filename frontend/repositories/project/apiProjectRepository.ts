@@ -128,4 +128,17 @@ export class APIProjectRepository {
     const response = await this.request.get(url, { params })
     return response
   }
+
+  public async getMembers(projectId: number): Promise<any[]> {
+    const url = `/projects/${projectId}/members`;
+    console.log('Fetching members from:', url);
+    try {
+      const response = await this.request.get(url);
+      console.log('Members fetched successfully:', response.data);
+      return response.data|| [];
+    } catch (error) {
+      console.error('Erro ao buscar membros do projeto:', error);
+      return [];
+    }
+  }
 }

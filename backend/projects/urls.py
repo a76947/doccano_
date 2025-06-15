@@ -25,6 +25,7 @@ from .views.votacoes import (
     SessionChatView
 )
 
+from labels.views import ProjectLabelsAPI
 
 # Create router for ViewSets
 router = DefaultRouter()
@@ -86,5 +87,5 @@ urlpatterns = [
     path("projects/<int:project_id>/sessions/<str:session_id>/votes/<str:vote_id>/submit", VoteSubmissionView.as_view(), name="vote_submit"),
     path("projects/<int:project_id>/sessions/<str:session_id>/chat", SessionChatView.as_view(), name="session_chat"),
 
-
+    path("projects/<int:project_id>/labels", ProjectLabelsAPI.as_view(), name="project_labels"),
 ]
