@@ -142,11 +142,16 @@ export default {
         },
         {
           icon: mdiChartBox,
-          text: 'Relatórios',
-          link: 'report',
+          text: 'Relatórios de Anotação',
+          link: 'rules/anotacao',
           isVisible: true
         },
-
+        {
+          icon: mdiChartBox,
+          text: 'Relatórios de Anotadores',
+          link: 'rules/annotators',
+          isVisible: true
+        },
 
         {
           icon: mdiCog,
