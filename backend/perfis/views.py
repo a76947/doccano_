@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 from django.contrib.auth.models import Permission, Group
+from django.shortcuts import get_object_or_404
 from .serializers import PermissionSerializer, GroupSerializer
 
 class GroupListView(APIView):
@@ -22,6 +23,30 @@ class GroupCreateView(APIView):
         group.save()
         serializer = GroupSerializer(group)
         return Response(serializer.data)
+
+class GroupDetailView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request, pk):
+        group = get_object_or_404(Group, pk=pk)
+        serializer = GroupSerializer(group)
+        return Response(serializer.data)
+
+    def put(self, request, pk):
+        group = get_object_or_404(Group, pk=pk)
+        serializer = GroupSerializer(group, data=request.data, partial=True)
+        if serializer.is_valid():
+            permissions_data = request.data.get('permissions')
+            if permissions_data is not None:
+                group.permissions.set(permissions_data)
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+
+    def delete(self, request, pk):
+        group = get_object_or_404(Group, pk=pk)
+        group.delete()
+        return Response(status=204)
 
 class PermissionListView(APIView):
     permission_classes = [IsAdminUser]

@@ -41,6 +41,8 @@ import {
   mdiHistory,
   mdiViewDashboard,
   mdiAlertCircleOutline,
+
+  mdiHistory,
   mdiChartPie,
   mdiChartBox
 } from '@mdi/js'
@@ -122,6 +124,14 @@ export default {
           link: 'metrics',
           isVisible: this.isProjectAdmin
         },
+
+        {
+          icon: mdiHistory,
+          text: 'History of Annotations',
+          link: 'annotation-history',
+          isVisible: true
+        },
+
         {
           icon: mdiViewDashboard,
           text: 'Perspetivas',
@@ -141,6 +151,7 @@ export default {
           isVisible: this.isProjectAdmin
         },
         {
+
           icon: mdiChartBox,
           text: 'Relatórios',
           link: 'report',
@@ -154,6 +165,7 @@ export default {
           link: 'discrepancies',
           isVisible: true
         },
+
 
         {
           icon: mdiCog,

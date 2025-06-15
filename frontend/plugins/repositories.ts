@@ -29,6 +29,7 @@ import { APISegmentationRepository } from '~/repositories/tasks/apiSegmentationR
 
 // IMPORTA O TEU NOVO REPOSITÓRIO
 import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
+import { APIAnnotationHistoryRepository } from '@/repositories/annotationHistory/apiAnnotationHistoryRepository'
 
 
 import { APIAnnotationRepository } from '@/repositories/annotation/apiAnnotationRepository'
@@ -74,6 +75,7 @@ export interface Repositories {
   // Download
   downloadFormat: APIDownloadFormatRepository
   download: APIDownloadRepository
+  annotationHistory: APIAnnotationHistoryRepository
 
   // Label Type
   categoryType: APILabelRepository
@@ -91,6 +93,7 @@ export interface Repositories {
   // Perspective
   perspective: ApiPerspectiveRepository
 
+
   // Discrepancies
 
   rules: ApiRulesRepository // Add this line
@@ -99,6 +102,7 @@ export interface Repositories {
 
   answer: ApiAnswerRepository
   discrepancy: ApiDiscrepancieRepository // Add this line
+
 
 
   // Annotation
@@ -147,6 +151,7 @@ const repositories: Repositories = {
   // Download
   downloadFormat: new APIDownloadFormatRepository(),
   download: new APIDownloadRepository(),
+  annotationHistory: new APIAnnotationHistoryRepository(),
 
   // Label Type
   categoryType: new APILabelRepository('category-type'),

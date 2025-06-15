@@ -124,4 +124,10 @@ export class APIExampleRepository implements ExampleRepository {
     const url = `/projects/${projectId}/examples/${exampleId}/states`
     await this.request.post(url, {})
   }
+
+  async fetchDatasetNames(projectId: string): Promise<{ datasetNames: string[] }> {
+    const url = `/projects/${projectId}/dataset-names`;
+    const response = await this.request.get(url);
+    return response.data;
+  }
 }

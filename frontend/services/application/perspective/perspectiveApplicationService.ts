@@ -71,6 +71,9 @@ export function usePerspectiveApplicationService() {
       repository.update(projectId, questionId, data),
 
     listPerspectiveAnswersByQuestion: (projectId: string | number, questionId: string | number) => 
-      repository.listAnswersByQuestion(projectId, questionId)
+      repository.listAnswersByQuestion(projectId, questionId),
+
+    deletePerspectiveGroup: (projectId: string | number, groupId: string | number) => 
+      repository.deleteGroup(projectId, groupId)
   }
 }

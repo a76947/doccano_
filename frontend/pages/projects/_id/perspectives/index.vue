@@ -106,6 +106,16 @@
             <v-icon left small>mdi-text-box-check-outline</v-icon>
             Answer
           </v-btn>
+          <v-btn
+            small
+            color="error"
+            class="ml-2"
+            :disabled="groupHasResponses"
+            @click.stop="openDeleteGroupDialog(group)"
+          >
+            <v-icon left small>mdi-delete</v-icon>
+            Delete Group
+          </v-btn>
         </v-expansion-panel-header>
         <v-expansion-panel-content>
           <div v-if="group.questions.length">
@@ -378,30 +388,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- Delete Question Dialog -->
-    <v-dialog v-model="dialogDeleteQuestion" max-width="400px">
-      <v-card>
-        <v-card-title class="headline">Delete Question</v-card-title>
-        <v-card-text>
-          Are you sure you want to delete this question?
-          <div class="mt-2 font-weight-bold">{{ deletingQuestion?.question }}</div>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn text @click="dialogDeleteQuestion = false">
-            Cancel
-          </v-btn>
-          <v-btn
-            color="error"
-            text
-            @click="deleteQuestion"
-          >
-            Delete
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
     <!-- View Responses Dialog -->
     <v-dialog v-model="dialogViewResponses" max-width="800px">
       <v-card>
@@ -443,6 +429,66 @@
         <v-card-actions>
           <v-spacer />
           <v-btn text @click="dialogViewResponses = false">Close</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Group Dialog -->
+    <v-dialog v-model="dialogDeleteGroup" max-width="400px">
+      <v-card>
+        <v-card-title class="headline">Delete Perspective Group</v-card-title>
+        <v-card-text>
+          <div v-if="groupHasResponses" 
+            class="red--text text--darken-1 font-weight-bold">
+            Cannot delete group because it has responses.
+            Please delete all responses first.
+          </div>
+          <template v-else>
+            Are you sure you want to delete the perspective group:
+            <div class="mt-2 font-weight-bold">{{ deletingGroup?.name }}</div>
+            <div class="red--text text--darken-1 font-weight-bold">This action cannot be 
+              undone and will delete all associated questions!</div>
+          </template>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="dialogDeleteGroup = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            color="error"
+            text
+            :disabled="groupHasResponses"
+            @click="deleteGroup"
+          >
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Question Dialog -->
+    <v-dialog v-model="dialogDeleteQuestion" max-width="400px">
+      <v-card>
+        <v-card-title class="headline">Delete Question</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete the question:
+          <div class="mt-2 font-weight-bold">{{ deletingQuestion?.question }}</div>
+          <div class="red--text text--darken-1 font-weight-bold">This action cannot be 
+            undone and will delete all associated answers!</div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="dialogDeleteQuestion = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            color="error"
+            text
+            @click="deleteQuestion"
+          >
+            Delete
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -525,12 +571,6 @@ export default {
       showErrors: false,
       questionAnswers: {},
 
-      // Delete Question
-      dialogDeleteQuestion: false,
-      deletingQuestion: null,
-      dialogConfirmDelete: false,
-      questionToDelete: null,
-
       // View Responses
       dialogViewResponses: false,
       viewingQuestion: null,
@@ -544,9 +584,22 @@ export default {
       voteCounts: {},
 
       knownUsers: [],
+
+
+      // Delete Group
+      dialogDeleteGroup: false,
+      deletingGroup: null,
+      groupHasResponses: false,
+
+      // Delete Question
+      dialogDeleteQuestion: false,
+      deletingQuestion: null,
+      deletingQuestionGroup: null
+
       examples: [],
       selectedExample: null,
       dialogSelectExample: false
+
     }
   },
 
@@ -887,80 +940,8 @@ export default {
       }
     },
 
-    openDeleteQuestionDialog(group, question) {
-      this.currentGroup = group;
-      this.deletingQuestion = question;
-      this.dialogDeleteQuestion = true;
-    },
-
-    async deleteQuestion() {
-      if (!this.deletingQuestion) return;
-
-      try {
-        await this.$services.perspective.deletePerspective(
-          this.projectId,
-          this.deletingQuestion.id
-        );
-
-        this.dialogDeleteQuestion = false;
-        await this.fetchPerspectiveGroups();
-        
-        const updatedGroup = this.perspectiveGroups.find(g => g.id === this.currentGroup.id);
-        if (updatedGroup && updatedGroup.questions.length === 0) {
-          this.openAddQuestionDialog(updatedGroup);
-          this.snackbarMessage = 'Please add at least one question to the group';
-          this.snackbar = true;
-        } else {
-          this.snackbarMessage = 'Question deleted successfully';
-          this.snackbar = true;
-        }
-      } catch (e) {
-        console.error(e);
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Error deleting question';
-        this.snackbarError = true;
-      }
-    },
-
-    async fetchGroupResponses(group) {
-      if (!group || !group.questions || group.questions.length === 0) {
-        this.snackbarErrorMessage = 'This group has no questions to fetch responses for.';
-        this.snackbarError = true;
-        return;
-      }
-
-      this.loadingResponses = true;
-      const allResponses = {};
-
-      try {
-        for (const question of group.questions) {
-          const response = await this.$services.perspective.listPerspectiveAnswersByQuestion(
-            this.projectId,
-            question.id
-          );
-          allResponses[question.id] = response.results || [];
-        }
-
-        console.log('All responses for group:', allResponses);
-        this.snackbarMessage = 'Responses fetched successfully!';
-        this.snackbar = true;
-
-        return allResponses;
-      } catch (error) {
-        console.error('Error fetching group responses:', error);
-        this.snackbarErrorMessage = 'Failed to fetch responses for the group.';
-        this.snackbarError = true;
-      } finally {
-        this.loadingResponses = false;
-      }
-    },
-
-    async viewGroupResponses(group) {
-      const responses = await this.fetchGroupResponses(group);
-      console.log('Responses for the group:', responses);
-    },
-
-    openEditQuestionDialog(group, question) {
-      this.currentGroup = group
+    openEditQuestionDialog(_group, question) {
+      this.currentGroup = _group
       this.editingQuestion = { ...question }
       this.editFormErrors = {
         question: false,
@@ -1068,8 +1049,101 @@ export default {
       
       // Now show the dialog
       this.dialogCompare = true;
-    }
+    },
 
+    async hasGroupResponses(group) {
+      if (!group) return false;
+      
+      try {
+        // Check each question in the group for responses
+        for (const question of group.questions) {
+          const service = usePerspectiveApplicationService();
+          const response = await service.listPerspectiveAnswersByQuestion(
+            this.projectId,
+            question.id
+          );
+          if (response.results && response.results.length > 0) {
+            return true;
+          }
+        }
+        return false;
+      } catch (error) {
+        console.error('Error checking group responses:', error);
+        return true; // If there's an error, assume there are responses to be safe
+      }
+    },
+
+    async openDeleteGroupDialog(group) {
+      this.deletingGroup = group;
+      this.groupHasResponses = await this.hasGroupResponses(group);
+      
+      if (this.groupHasResponses) {
+        this.snackbarErrorMessage = 'Cannot delete group because it has responses. Please delete all responses first.';
+        this.snackbarError = true;
+        return;
+      }
+      
+      this.dialogDeleteGroup = true;
+    },
+
+    async deleteGroup() {
+      if (!this.deletingGroup) return;
+
+      // Double check if group has responses before deleting
+      const hasResponses = await this.hasGroupResponses(this.deletingGroup);
+      if (hasResponses) {
+        this.snackbarErrorMessage = 'Cannot delete group because it has responses. Please delete all responses first.';
+        this.snackbarError = true;
+        this.dialogDeleteGroup = false;
+        return;
+      }
+
+      try {
+        const service = usePerspectiveApplicationService();
+        await service.deletePerspectiveGroup(
+          this.projectId,
+          this.deletingGroup.id
+        );
+        this.dialogDeleteGroup = false;
+        await this.fetchPerspectiveGroups();
+        this.snackbarMessage = 'Perspective group deleted successfully';
+        this.snackbar = true;
+      } catch (e) {
+        console.error('Error deleting group:', e);
+        console.error('Error details:', {
+          message: e.message,
+          response: e.response?.data,
+          status: e.response?.status
+        });
+        this.snackbarErrorMessage = e.response?.data?.detail || e.message || 'Error deleting perspective group';
+        this.snackbarError = true;
+      }
+    },
+
+    openDeleteQuestionDialog(group, question) {
+      this.deletingQuestion = question;
+      this.deletingQuestionGroup = group;
+      this.dialogDeleteQuestion = true;
+    },
+
+    async deleteQuestion() {
+      if (!this.deletingQuestion) return;
+
+      try {
+        await this.$services.perspective.deletePerspective(
+          this.projectId,
+          this.deletingQuestion.id
+        );
+        this.dialogDeleteQuestion = false;
+        await this.fetchPerspectiveGroups();
+        this.snackbarMessage = 'Question deleted successfully';
+        this.snackbar = true;
+      } catch (e) {
+        console.error(e);
+        this.snackbarErrorMessage = e.response?.data?.detail || 'Error deleting question';
+        this.snackbarError = true;
+      }
+    },
   }
 }
 </script>

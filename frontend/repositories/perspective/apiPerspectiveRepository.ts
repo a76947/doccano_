@@ -55,4 +55,10 @@ export class ApiPerspectiveRepository {
     const response = await ApiService.put(url, payload)
     return response.data
   }
+
+  async deleteGroup(projectId: string | number, groupId: string | number) {
+    const url = `/projects/${projectId}/perspective-groups/${groupId}/`
+    const response = await ApiService.delete(url)
+    return response.data
+  }
 }
