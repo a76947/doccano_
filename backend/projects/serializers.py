@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from rest_polymorphic.serializers import PolymorphicSerializer
+from rest_framework import serializers
+from django.db import IntegrityError
+from .models import Perspective
 
 from .models import (
     BoundingBoxProject,
@@ -17,6 +20,10 @@ from .models import (
     Perspective,
     PerspectiveAnswer,
     PerspectiveGroup,
+    ToSubmitQuestions,
+    VotingSession,
+    VotingSessionAnswer,
+    RuleDiscussionMessage,
 )
 
 
@@ -150,6 +157,7 @@ class ProjectPolymorphicSerializer(PolymorphicSerializer):
         **{cls.Meta.model: cls for cls in ProjectSerializer.__subclasses__()},
     }
 
+        
 class PerspectiveSerializer(serializers.ModelSerializer):
     options = serializers.ListField(
         child=serializers.CharField(), required=False, allow_empty=True
@@ -159,7 +167,37 @@ class PerspectiveSerializer(serializers.ModelSerializer):
         model = Perspective
         fields = ['id', 'name', 'question', 'data_type', 'options', 'group', 'project']
         read_only_fields = ['id']
+
+    def validate(self, attrs):
+        group = attrs.get('group') or getattr(self.instance, 'group', None)
+        question = attrs.get('question')
+        if group and question:
+            exists = Perspective.objects.filter(group=group, question=question)
+            if self.instance:
+                exists = exists.exclude(pk=self.instance.pk)
+            if exists.exists():
+                raise serializers.ValidationError({
+                    'question': 'Já existe uma pergunta com este texto neste grupo.'
+                })
+        return attrs
+
+    def create(self, validated_data):
+        try:
+            return super().create(validated_data)
+        except IntegrityError:
+            raise serializers.ValidationError({
+                'question': 'Já existe uma pergunta com este texto neste grupo.'
+            })
         
+
+class PerspectiveGroupSerializer(serializers.ModelSerializer):
+    questions = PerspectiveSerializer(many=True, read_only=True)
+    
+    class Meta:
+        model = PerspectiveGroup
+        fields = ['id', 'name', 'description', 'questions', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
 class PerspectiveAnswerSerializer(serializers.ModelSerializer):
     created_by_username = serializers.SerializerMethodField()
     # If there's no created_at field, you can add a method field to return current time
@@ -168,7 +206,7 @@ class PerspectiveAnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = PerspectiveAnswer
         fields = [
-            'id', 'perspective', 'project', 'answer', 
+            'id', 'perspective', 'project', 'example', 'answer', 
             'created_by', 'created_by_username', 'created_at'
         ]
     
@@ -187,10 +225,35 @@ class PerspectiveAnswerSerializer(serializers.ModelSerializer):
         from django.utils import timezone
         return timezone.now()
 
-class PerspectiveGroupSerializer(serializers.ModelSerializer):
-    questions = PerspectiveSerializer(many=True, read_only=True)
-    
+
+
+
+class VotingSessionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = PerspectiveGroup
-        fields = ['id', 'name', 'description', 'questions', 'created_at']
+        model = VotingSession
+        fields = ['id', 'project', 'questions', 'created_at', 'vote_end_date', 'finish']
         read_only_fields = ['id', 'created_at']
+
+class VotingSessionAnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VotingSessionAnswer
+        fields = ['id', 'voting_session', 'project', 'created_by', 'answer']
+        read_only_fields = ['id', 'created_by']
+
+    def validate_answer(self, value):
+        if not isinstance(value, list):
+            raise serializers.ValidationError("Answer must be provided as a list of strings.")
+        for item in value:
+            if not isinstance(item, str):
+                raise serializers.ValidationError("Each answer must be a string.")
+        return value
+
+class RuleDiscussionSerializer(serializers.ModelSerializer):
+    """Serializer for chat messages exchanged while discussing rules."""
+    username = serializers.CharField(source='created_by.username', read_only=True)
+
+    class Meta:
+        model = RuleDiscussionMessage  # type: ignore  # defined in models
+        fields = ['id', 'message', 'username', 'created_at']
+        read_only_fields = ['id', 'username', 'created_at']
+

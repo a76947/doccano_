@@ -91,6 +91,8 @@
       @click:labeling="movePage"
       @edit="editItem"
       @vote="openVotePage"
+      @assign="assign"
+      @unassign="unassign"
     />
 <v-dialog v-model="dialogCompare" max-width="90%" height="80vh" content-class="comparison-dialog">
   <v-card class="comparison-card">
@@ -130,7 +132,7 @@
   color="warning"
 >
   {{ noAnnotationsMessage }}
-  <template v-slot:action="{ attrs }">
+  <template #action="{ attrs }">
     <v-btn
       text
       v-bind="attrs"
@@ -203,13 +205,16 @@ export default Vue.extend({
         user1: null,
         user2: null
       },
-      projectUsers: [],
+      projectUsers: [] as MemberItem[],
       noAnnotationsSnackbar: false,
       noAnnotationsMessage: '',
+      dialogEdit: false,
+      editedItem: {} as ExampleDTO,
+      page: 1,
     }
   },
 
-  async fetch() {
+  async fetch(this: NuxtAppOptions) {
     this.isLoading = true
     this.item = await this.$services.example.list(this.projectId, this.$route.query)
     this.user = await this.$repositories.member.fetchMyRole(this.projectId)
@@ -241,7 +246,7 @@ export default Vue.extend({
       return this.$route.params.id
     },
 
-    itemKey(): string {
+    itemKey(this: NuxtAppOptions): string {
       if (this.project.isImageProject || this.project.isAudioProject) {
         return 'filename'
       } else {
@@ -251,13 +256,12 @@ export default Vue.extend({
   },
 
   watch: {
-    '$route.query': _.debounce(function () {
-      // @ts-ignore
+    '$route.query': _.debounce(function (this: NuxtAppOptions) {
       this.$fetch()
     }, 1000)
   },
 
-  async created() {
+  async created(this: NuxtAppOptions) {
     const member = await this.$repositories.member.fetchMyRole(this.projectId)
     this.isProjectAdmin = member.isProjectAdmin
     
@@ -276,9 +280,9 @@ export default Vue.extend({
   },
 
   methods: {
-    async remove() {
+    async remove(this: NuxtAppOptions) {
       await this.$services.example.bulkDelete(this.projectId, this.selected)
-      this.$fetch()
+      await this.$fetch()
       this.dialogDelete = false
       this.selected = []
     },
@@ -302,18 +306,29 @@ export default Vue.extend({
       })
     },
 
-    editItem(item: ExampleDTO) {
-      this.$router.push(`dataset/${item.id}/edit`)
+    editItem(this: NuxtAppOptions, item: ExampleDTO) {
+      this.editedItem = Object.assign({}, item)
+      this.dialogEdit = true
     },
 
-    async assign(exampleId: number, userId: number) {
-      await this.$repositories.assignment.assign(this.projectId, exampleId, userId)
-      this.item = await this.$services.example.list(this.projectId, this.$route.query)
+    async assign(this: NuxtAppOptions, exampleId: number, assigneeId: number) {
+      try {
+        await this.$repositories.assignment.assign(this.projectId, exampleId, assigneeId);
+        await this.$fetch(); // Refresh data to reflect changes
+      } catch (error) {
+        console.error('Error assigning member:', error);
+        this.$toasted.error('Failed to assign member.');
+      }
     },
 
-    async unassign(assignmentId: string) {
-      await this.$repositories.assignment.unassign(this.projectId, assignmentId)
-      this.item = await this.$services.example.list(this.projectId, this.$route.query)
+    async unassign(this: NuxtAppOptions, assignmentId: string) {
+      try {
+        await this.$repositories.assignment.unassign(this.projectId, assignmentId);
+        await this.$fetch(); // Refresh data to reflect changes
+      } catch (error) {
+        console.error('Error unassigning member:', error);
+        this.$toasted.error('Failed to unassign member.');
+      }
     },
 
     async assigned() {
@@ -327,108 +342,37 @@ export default Vue.extend({
       this.item = await this.$services.example.list(this.projectId, this.$route.query)
     },
 
-    async openComparisonDialog({ documentId, user1, user2 }) {
-      console.log('Opening comparison dialog with:', { documentId, user1, user2 });
-      
-      try {
-        // Get document text first to make sure document exists
-        await this.$services.example.findById(this.projectId, documentId);
-        
-        // Check if annotations exist
-        let annotationData;
-        try {
-          annotationData = await this.$repositories.annotation.getComparisonData(
-            this.projectId,
-            documentId,
-            user1,
-            user2
-          );
-        } catch (error) {
-          console.error('Error fetching annotations:', error);
-          this.handleNoAnnotations({
-            message: `Error loading annotations: ${error.message}`
-          });
-          return;
-        }
-        
-        // Verify annotations exist for both users
-        if (!annotationData.user1.length && !annotationData.user2.length) {
-          this.handleNoAnnotations({
-            message: 'No annotations found for either user on this document.'
-          });
-          return;
-        } else if (!annotationData.user1.length) {
-          this.handleNoAnnotations({
-            message: `No annotations found for First User on this document.`
-          });
-          return;
-        } else if (!annotationData.user2.length) {
-          this.handleNoAnnotations({
-            message: `No annotations found for Second User on this document.`
-          });
-          return;
-        }
-        
-        // If we get here, both users have annotations, so show the dialog
-        this.selectedDocumentId = documentId;
-        this.comparisonUsers = { user1, user2 };
-        
-        // Only try to get members if admin
-        if (this.isProjectAdmin && (!this.projectUsers || this.projectUsers.length === 0)) {
-          try {
-            this.projectUsers = await this.$repositories.member.list(this.projectId);
-            console.log('Loaded project users:', this.projectUsers.length);
-          } catch (error) {
-            console.warn('Could not load project users:', error);
-            // Continue without user details
-            this.projectUsers = [];
-          }
-        }
-        
-        this.dialogCompare = true;
-        
-      } catch (error) {
-        console.error('Error checking document:', error);
-        this.handleNoAnnotations({
-          message: `Couldnt connect to the database, try again later.`
-        });
-      }
+    openComparisonDialog(this: NuxtAppOptions, users:
+     { user1: number; user2: number; documentId: number }) {
+      this.selectedDocumentId = users.documentId;
+      this.comparisonUsers.user1 = users.user1;
+      this.comparisonUsers.user2 = users.user2;
+      this.dialogCompareForm = false;
+      this.dialogCompare = true;
     },
 
-    // Helper method to get user name
-    getUserName(userId) {
-      // Find user in projectUsers
-      if (this.projectUsers && Array.isArray(this.projectUsers)) {
-        const user = this.projectUsers.find(u => u.id === parseInt(userId) || u.id === userId);
-        if (user && user.username) {
-          return user.username;
-        }
-      }
-      return `User ${userId}`;
-    },
-
-    handleNoAnnotations({ message }) {
+    handleNoAnnotations(this: NuxtAppOptions, message: string) {
       this.noAnnotationsMessage = message;
       this.noAnnotationsSnackbar = true;
-      this.dialogCompare = false; // Close the comparison dialog
+      this.dialogCompare = false;
     },
 
-    openVotePage(item) {
-      // Make sure item exists and has necessary data
-      if (!item || !item.id) {
-        console.warn('No document selected for voting');
-        return;
+    openVotePage(this: NuxtAppOptions, item: ExampleDTO) {
+      this.$router.push(
+        getLinkToAnnotationPage(this.projectId, item.id, this.search, String(this.page))
+        + '&activeTab=vote'
+      )
+    },
+
+    async updateExample(this: NuxtAppOptions) {
+      try {
+        await this.$services.example.update(this.projectId, this.editedItem)
+        this.dialogEdit = false
+        await this.$fetch()
+      } catch (e) {
+        console.log(e)
       }
-      
-      // Navigate to votacoes page with document info
-      this.$router.push({
-        path: `/projects/${this.projectId}/votacoes`,
-        query: { 
-          documentId: item.id,
-          documentTitle: item.text || `Document #${item.id}`
-        }
-      });
-    }
+    },
   }
 })
 </script>

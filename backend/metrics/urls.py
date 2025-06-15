@@ -7,6 +7,7 @@ from .views import (
     RelationTypeDistribution,
     SpanTypeDistribution,
     DatasetStatisticsAPI,
+    DatasetReportAPI,
 )
 
 urlpatterns = [
@@ -16,4 +17,5 @@ urlpatterns = [
     path(route="relation-distribution", view=RelationTypeDistribution.as_view(), name="relation_distribution"),
     path(route="span-distribution", view=SpanTypeDistribution.as_view(), name="span_distribution"),
     path('dataset', DatasetStatisticsAPI.as_view(), name='dataset_statistics'),
+    path('dataset-report', DatasetReportAPI.as_view(), name='dataset_report'),
 ]

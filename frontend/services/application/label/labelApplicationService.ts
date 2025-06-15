@@ -4,11 +4,37 @@ import { LabelRepository } from '~/domain/models/label/labelRepository'
 import { LabelItem } from '~/domain/models/label/label'
 
 export class LabelApplicationService {
-  constructor(private readonly repository: LabelRepository) {}
+  constructor(private readonly repository: LabelRepository 
+    & { listLabels?(projectId: string): Promise<any> }) {}
 
-  public async list(id: string): Promise<LabelDTO[]> {
-    const items = await this.repository.list(id)
-    return items.map((item) => new LabelDTO(item))
+  // Método antigo: list
+  public async list(projectId: string): Promise<LabelDTO[]> {
+    try {
+      const items = await this.repository.list(projectId); // Faz a requisição ao repositório
+      console.log("Labels recebidas (list):", items);
+
+      // Retorna os dados sem processamento adicional
+      return items;
+    } catch (error) {
+      console.error("Erro ao buscar labels (list):", error);
+      throw new Error("Não foi possível buscar as labels.");
+    }
+  }
+
+  // Método para retornar o objeto bruto do endpoint (sem achatar)
+  public async listLabels(projectId: string): Promise<any> {
+    try {
+      if (!this.repository.listLabels) {
+        throw new Error
+        ("listLabels method is not defined in the repository.");
+      }
+      const response = await this.repository.listLabels(projectId);
+      console.log("Labels recebidas (listLabels):", response);
+      return response;
+    } catch (error) {
+      console.error("Erro ao buscar labels (listLabels):", error);
+      throw new Error("Não foi possível buscar as labels.");
+    }
   }
 
   public async findById(projectId: string, labelId: number): Promise<LabelDTO> {

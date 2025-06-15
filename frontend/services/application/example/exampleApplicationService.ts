@@ -15,6 +15,30 @@ export class ExampleApplicationService {
     }
   }
 
+  public async getCurrentExample(projectId: string): Promise<ExampleDTO | null> {
+    try {
+      // Get the current example from the URL or state
+      const currentExampleId = window.location.pathname.split('/').pop()
+      if (currentExampleId && !isNaN(parseInt(currentExampleId))) {
+        return await this.findById(projectId, parseInt(currentExampleId))
+      }
+
+      // If no example is selected, get the first one
+      const options: SearchOption = {
+        limit: '1',
+        offset: '0',
+        q: '',
+        isChecked: '',
+        ordering: ''
+      }
+      const result = await this.list(projectId, options)
+      return result.items.length > 0 ? result.items[0] : null
+    } catch (e: any) {
+      console.error('Error getting current example:', e)
+      return null
+    }
+  }
+
   public async fetchOne(
     projectId: string,
     page: string,

@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     "projects",
     "metrics",
     "users",
-    "groups.apps.GroupsConfig",  # Use the AppConfig instead of 'groups'
     "data_import",
     "data_export",
     "auto_labeling",
@@ -73,7 +72,6 @@ INSTALLED_APPS = [
     "health_check.contrib.celery",
     "django_cleanup",
     "todo_api",
-    "channels",
 ]
 
 

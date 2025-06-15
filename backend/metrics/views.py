@@ -1,11 +1,22 @@
 import abc
+import json
+import io
+import logging
+from datetime import datetime
+from io import BytesIO
 
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from django.http import HttpResponse
 
 from examples.models import Example, ExampleState
 from label_types.models import CategoryType, LabelType, RelationType, SpanType
@@ -13,6 +24,7 @@ from labels.models import Category, Label, Relation, Span
 from projects.models import Member, Project
 from projects.permissions import IsProjectAdmin, IsProjectStaffAndReadOnly
 
+logger = logging.getLogger(__name__)
 
 class ProgressAPI(APIView):
     permission_classes = [IsAuthenticated & (IsProjectAdmin | IsProjectStaffAndReadOnly)]
@@ -82,12 +94,21 @@ class DatasetStatisticsAPI(APIView):
         annotation_filter = request.query_params.get('annotation_type')
         ordering = request.query_params.get('ordering', '-updated_at')  # Default sort by updated_at desc
         
-        # Get label filter parameters - THIS IS NEW
+        # Get label filter parameters
         label_type = request.query_params.get('label_type')
         label_id = request.query_params.get('label_id')
         
-        # Get assignee filter parameter - THIS IS NEW
+        # Get assignee filter parameter
         assignee = request.query_params.get('assignee') or request.query_params.get('username')
+
+        # Get perspective filters
+        perspective_filters = request.query_params.get('perspective_filters')
+        if perspective_filters:
+            try:
+                perspective_filters = json.loads(perspective_filters)
+            except json.JSONDecodeError:
+                print("Error decoding perspective filters JSON")
+                perspective_filters = None
         
         # Field name mapping from frontend to database
         field_mapping = {
@@ -127,6 +148,48 @@ class DatasetStatisticsAPI(APIView):
                     spans__isnull=True,
                     relations__isnull=True
                 )
+
+        # Apply perspective filters
+        if perspective_filters:
+            print(f"DEBUG: Applying perspective filters: {perspective_filters}")
+            initial_example_count = filtered_query.count()
+            print(f"DEBUG: Examples count before perspective filter: {initial_example_count}")
+            
+            combined_q_filters = Q()
+            has_any_perspective_filter = False
+
+            for question_id, value in perspective_filters.items():
+                # If the selected_value is an empty list, skip this filter as it implies no specific selection.
+                if isinstance(value, list) and len(value) == 0:
+                    print(f"DEBUG: Skipping filter for Q{question_id} as selected value list is empty.")
+                    continue
+
+                has_any_perspective_filter = True
+                
+                if isinstance(value, list):
+                    # For list of values (e.g., multi-select string/int options)
+                    answer_values_str = [str(v) for v in value]
+                    answer_q = Q(perspective_answers__answer__in=answer_values_str)
+                    print(f"DEBUG: Building filter for Q{question_id} (list): {answer_values_str}")
+                elif isinstance(value, bool):
+                    str_value = 'Yes' if value else 'No'
+                    answer_q = Q(perspective_answers__answer=str_value)
+                    print(f"DEBUG: Building filter for Q{question_id} (bool): {str_value}")
+                else:
+                    # For single string/int value
+                    str_value = str(value)
+                    from django.db.models import Value
+                    answer_q = Q(perspective_answers__answer=Value(str_value))
+                    print(f"DEBUG: Building filter for Q{question_id} (single): {str_value}")
+                
+                current_filter_q = Q(perspective_answers__perspective__id=question_id) & answer_q
+                combined_q_filters &= current_filter_q
+            
+            if has_any_perspective_filter:
+                # Filter by the combined conditions and ensure distinct examples
+                filtered_query = filtered_query.filter(combined_q_filters).distinct()
+                print(f"DEBUG: Examples count AFTER perspective filter: {filtered_query.count()}")
+                print(f"DEBUG: Generated SQL Query (after perspective filter): {filtered_query.query}")
         
         # Label type and ID filtering
         if label_type and label_id:
@@ -280,3 +343,229 @@ class DatasetStatisticsAPI(APIView):
         }
 
         return Response(data)
+
+
+class DatasetReportAPI(APIView):
+    permission_classes = [IsAuthenticated & IsProjectAdmin]
+
+    def get(self, request, project_id):
+        print(f"DIRECT PRINT: Accept header: {request.headers.get('Accept', '')}")
+        print(f"DIRECT PRINT: Received PDF generation request for project {project_id}")
+        print(f"DIRECT PRINT: User: {request.user.username}")
+        print(f"DIRECT PRINT: Request params: {request.GET}")
+
+        try:
+            # Get project info
+            try:
+                project = get_object_or_404(Project, pk=project_id)
+                print(f"DIRECT PRINT: Project name: {project.name}")
+            except Exception as e:
+                print(f"DIRECT PRINT: Error getting project: {str(e)}")
+                return Response(
+                    {'error': f'Error getting project: {str(e)}'},
+                    status=status.HTTP_404_NOT_FOUND,
+                    content_type='application/json'
+                )
+
+            # Get perspective filters if any
+            perspective_filters = request.GET.get('perspective_filters')
+            if perspective_filters:
+                try:
+                    perspective_filters = json.loads(perspective_filters)
+                    print(f"DIRECT PRINT: Perspective filters: {perspective_filters}")
+                except json.JSONDecodeError as e:
+                    print(f"DIRECT PRINT: Error decoding perspective filters: {str(e)}")
+                    return Response(
+                        {'error': 'Invalid perspective filters format'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                        content_type='application/json'
+                    )
+
+            # Build base query
+            try:
+                base_query = Example.objects.filter(project=project)
+                print(f"DIRECT PRINT: Base query count: {base_query.count()}")
+            except Exception as e:
+                print(f"DIRECT PRINT: Error building base query: {str(e)}")
+                return Response(
+                    {'error': f'Error building base query: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content_type='application/json'
+                )
+
+            # Apply perspective filters if any
+            if perspective_filters:
+                try:
+                    for question_id, value in perspective_filters.items():
+                        if not value:  # Skip empty values
+                            continue
+                            
+                        # Convert value to list if it's not already
+                        values = value if isinstance(value, list) else [value]
+                        
+                        if not values:  # Skip empty lists
+                            continue
+                            
+                        print(f"DIRECT PRINT: Applying filter for question {question_id} with values {values}")
+                        
+                        # Build the filter condition
+                        filter_condition = Q()
+                        for val in values:
+                            filter_condition |= Q(
+                                perspective_answers__perspective__id=question_id,
+                                perspective_answers__answer=val
+                            )
+                        
+                        # Apply the filter
+                        base_query = base_query.filter(filter_condition).distinct()
+                        print(f"DIRECT PRINT: Query count after filter: {base_query.count()}")
+                except Exception as e:
+                    print(f"DIRECT PRINT: Error applying perspective filters: {str(e)}")
+                    return Response(
+                        {'error': f'Error applying perspective filters: {str(e)}'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                        content_type='application/json'
+                    )
+
+            # Calculate statistics
+            try:
+                total_docs = base_query.count()
+                annotated_docs = base_query.filter(states__isnull=False).distinct().count()
+                unannotated_docs = total_docs - annotated_docs
+                
+                print(f"DIRECT PRINT: Total docs: {total_docs}")
+                print(f"DIRECT PRINT: Annotated docs: {annotated_docs}")
+                print(f"DIRECT PRINT: Unannotated docs: {unannotated_docs}")
+            except Exception as e:
+                print(f"DIRECT PRINT: Error calculating statistics: {str(e)}")
+                return Response(
+                    {'error': f'Error calculating statistics: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content_type='application/json'
+                )
+
+            # Generate PDF
+            try:
+                # Create a BytesIO buffer to store the PDF
+                buffer = BytesIO()
+                
+                # Create the PDF document
+                doc = SimpleDocTemplate(buffer, pagesize=letter)
+                elements = []
+                
+                # Add title
+                styles = getSampleStyleSheet()
+                title_style = ParagraphStyle(
+                    'CustomTitle',
+                    parent=styles['Heading1'],
+                    fontSize=24,
+                    spaceAfter=30
+                )
+                elements.append(Paragraph(f"Dataset Report - {project.name}", title_style))
+                
+                # Add statistics section
+                elements.append(Paragraph("Statistics", styles['Heading2']))
+                stats_data = [
+                    ["Total Documents", str(total_docs)],
+                    ["Annotated Documents", str(annotated_docs)],
+                    ["Unannotated Documents", str(unannotated_docs)]
+                ]
+                stats_table = Table(stats_data, colWidths=[200, 100])
+                stats_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 14),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 1), (-1, -1), 12),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                elements.append(stats_table)
+                elements.append(Spacer(1, 20))
+                
+                # Add perspective filters section if any
+                if perspective_filters:
+                    elements.append(Paragraph("Applied Perspective Filters", styles['Heading2']))
+                    filter_data = [["Question ID", "Value"]]
+                    for question_id, value in perspective_filters.items():
+                        if value:  # Only add non-empty values
+                            values = value if isinstance(value, list) else [value]
+                            for val in values:
+                                filter_data.append([str(question_id), str(val)])
+                    filter_table = Table(filter_data, colWidths=[200, 100])
+                    filter_table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 14),
+                        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                        ('FONTSIZE', (0, 1), (-1, -1), 12),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                    ]))
+                    elements.append(filter_table)
+                    elements.append(Spacer(1, 20))
+                
+                # Add sample entries section
+                elements.append(Paragraph("Sample Entries", styles['Heading2']))
+                sample_entries = base_query.order_by('id')[:10]  # Get first 10 entries
+                entry_data = [["ID", "Text", "Status"]]
+                for entry in sample_entries:
+                    status = "Annotated" if entry.states.exists() else "Pending"
+                    entry_data.append([str(entry.id), entry.text[:100] + "...", status])
+                entry_table = Table(entry_data, colWidths=[50, 400, 100])
+                entry_table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 14),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 1), (-1, -1), 12),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                ]))
+                elements.append(entry_table)
+                
+                # Build the PDF
+                doc.build(elements)
+                
+                # Get the value of the BytesIO buffer
+                pdf = buffer.getvalue()
+                buffer.close()
+                
+                # Create the response
+                response = HttpResponse(content_type='application/pdf')
+                response['Content-Disposition'] = f'attachment; filename="dataset-report-{project_id}.pdf"'
+                response.write(pdf)
+                
+                return response
+                
+            except Exception as e:
+                print(f"DIRECT PRINT: Error generating PDF: {str(e)}")
+                import traceback
+                print(f"DIRECT PRINT: Traceback: {traceback.format_exc()}")
+                return Response(
+                    {'error': f'Error generating PDF: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content_type='application/json'
+                )
+                
+        except Exception as e:
+            print(f"DIRECT PRINT: Unexpected error: {str(e)}")
+            import traceback
+            print(f"DIRECT PRINT: Traceback: {traceback.format_exc()}")
+            return Response(
+                {'error': f'Unexpected error: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                content_type='application/json'
+            )

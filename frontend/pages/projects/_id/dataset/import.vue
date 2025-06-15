@@ -248,14 +248,27 @@ export default {
     pollData() {
       this.polling = setInterval(async () => {
         if (this.taskId) {
-          const res = await this.$repositories.taskStatus.get(this.taskId)
-          if (res.ready) {
-            this.taskId = null
-            this.errors = res.result.error
-            this.myFiles = []
-            this.uploadedFiles = []
-            this.isImporting = false
-            if (this.errors.length === 0) {
+          try {
+            const res = await this.$repositories.taskStatus.get(this.taskId)
+            if (res.ready) {
+              this.taskId = null
+              this.errors = res.result.error
+              this.myFiles = []
+              this.uploadedFiles = []
+              this.isImporting = false
+              if (this.errors.length === 0) {
+                this.$router.push(`/projects/${this.$route.params.id}/dataset`)
+              }
+            }
+          } catch (error) {
+            console.warn('Erro ao verificar status da tarefa:', error)
+            // Se o arquivo foi importado com sucesso, podemos ignorar o erro de status
+            // e redirecionar para a página de datasets
+            if (this.isImporting) {
+              this.taskId = null
+              this.myFiles = []
+              this.uploadedFiles = []
+              this.isImporting = false
               this.$router.push(`/projects/${this.$route.params.id}/dataset`)
             }
           }

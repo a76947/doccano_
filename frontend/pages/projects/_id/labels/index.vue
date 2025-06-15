@@ -163,7 +163,9 @@ export default Vue.extend({
   methods: {
     async list() {
       this.isLoading = true
-      this.items = await this.service.list(this.projectId)
+      const response = await this.service.list(this.projectId)
+      console.log('Label list response:', response)
+      this.items = response
       this.isLoading = false
     },
 

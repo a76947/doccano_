@@ -221,6 +221,8 @@ class Member(models.Model):
         unique_together = ("user", "project")
 
 
+
+
 class PerspectiveGroup(models.Model):
     project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='perspective_groups')
     name = models.CharField(max_length=100)
@@ -230,7 +232,6 @@ class PerspectiveGroup(models.Model):
     def __str__(self):
         return self.name
 
-
 class Perspective(models.Model):
     DATA_TYPES = [
         ('int', 'Integer'),
@@ -239,17 +240,27 @@ class Perspective(models.Model):
     ]
 
     project = models.ForeignKey('Project', on_delete=models.CASCADE, related_name='perspectives')
-    group = models.ForeignKey('PerspectiveGroup', on_delete=models.CASCADE, 
-                             related_name='questions', null=True)
-    # The name field already exists in the database
+    group = models.ForeignKey(
+        'PerspectiveGroup',
+        on_delete=models.CASCADE,
+        related_name='questions',
+        null=True
+    )
     name = models.CharField(max_length=100)
     question = models.CharField(max_length=100)
     data_type = models.CharField(max_length=20, choices=DATA_TYPES)
-    options = models.JSONField(default=list, blank=True)  # List of options
+    options = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        unique_together = (('group', 'question'),)
+        # ou, em versões mais recentes:
+        # constraints = [
+        #   models.UniqueConstraint(fields=['group','question'], name='unique_question_per_group')
+        # ]
 
     def __str__(self):
         return f"{self.question} ({self.data_type})"
-    
+
 
 class PerspectiveAnswer(models.Model):
     perspective = models.ForeignKey(
@@ -262,6 +273,12 @@ class PerspectiveAnswer(models.Model):
         on_delete=models.CASCADE, 
         related_name='perspective_answers'
     )
+    example = models.ForeignKey(
+        'examples.Example',
+        on_delete=models.CASCADE,
+        related_name='perspective_answers',
+        null=True
+    )
     created_by = models.ForeignKey(
         User, 
         on_delete=models.SET_NULL,
@@ -270,4 +287,88 @@ class PerspectiveAnswer(models.Model):
     answer = models.TextField()
 
     def __str__(self):
+
         return f"Answer to {self.perspective.question}: {self.answer}"
+
+
+class ToSubmitQuestions(models.Model):
+    project = models.ForeignKey(
+        'Project', 
+        on_delete=models.CASCADE, 
+        related_name='discrepancies'
+    )
+    question = models.TextField() 
+    created_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default='toSubmit')
+
+    def __str__(self):
+        return f"Discrepancy: {self.text}"
+    
+
+class VotingSession(models.Model):
+    project = models.ForeignKey(
+        'Project', 
+        on_delete=models.CASCADE, 
+        related_name='voting_sessions'
+    )
+    questions = models.JSONField(default=list, blank=True)  # Lista de strings
+    created_at = models.DateTimeField(auto_now_add=True)
+    vote_end_date = models.DateTimeField(null=True, blank=True)  # Definida depois
+    finish = models.BooleanField(default=False)  # Novo campo boolean
+
+    def __str__(self):
+        return f"VotingSession for Project {self.project.id} created on {self.created_at}"
+    
+class VotingSessionAnswer(models.Model):
+    voting_session = models.ForeignKey(
+        'VotingSession', 
+        on_delete=models.CASCADE, 
+        related_name='answers'
+    )
+    project = models.ForeignKey(
+        'Project', 
+        on_delete=models.CASCADE, 
+        related_name='voting_session_answers'
+    )
+    created_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    answer = models.JSONField(default=list, blank=True)  # Lista de strings
+
+    def __str__(self):
+        return f"Answer to {self.voting_session.questions}: {self.answer}"
+
+class RuleDiscussionMessage(models.Model):
+    """Messages exchanged during discussion of a rule in a VotingSession."""
+    project = models.ForeignKey(
+        'Project',
+        on_delete=models.CASCADE,
+        related_name='rule_messages'
+    )
+    voting_session = models.ForeignKey(
+        'VotingSession',
+        on_delete=models.CASCADE,
+        related_name='rule_messages'
+    )
+    # Index of the question inside VotingSession.questions array. 0-based.
+    question_index = models.PositiveIntegerField()
+
+    message = models.TextField()
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"RuleDiscussionMessage(session={self.voting_session.id}, idx={self.question_index})"
+
+        return f"Answer for {self.perspective.question}: {self.answer}"
+

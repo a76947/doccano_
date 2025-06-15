@@ -55,6 +55,26 @@
         Assign
       </v-btn>
     </v-card-actions>
+
+    <!-- Confirmation Dialog -->
+    <v-dialog v-model="showConfirmDialog" max-width="500">
+      <v-card>
+        <v-card-title class="headline">Confirm Assignment</v-card-title>
+        <v-card-text>
+          Are you sure you want to assign members with the selected strategy and workloads?
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn color="primary darken-1" text @click="showConfirmDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn color="primary darken-1" text @click="confirmAssignment">
+            Confirm
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-overlay :value="isWaiting">
       <v-progress-circular indeterminate size="64" />
     </v-overlay>
@@ -71,7 +91,8 @@ export default Vue.extend({
       members: [] as MemberItem[],
       workloadAllocation: [] as number[],
       selectedStrategy: 'weighted_sequential',
-      isWaiting: false
+      isWaiting: false,
+      showConfirmDialog: false,
     }
   },
 
@@ -117,22 +138,42 @@ export default Vue.extend({
   },
 
   methods: {
-    async agree() {
-      this.isWaiting = true
+    agree() {
+      this.showConfirmDialog = true;
+    },
+
+    async confirmAssignment() {
+      this.showConfirmDialog = false;
+      console.log("Attempting to assign members.");
+      this.isWaiting = true;
       const workloads = this.workloadAllocation.map((weight, i) => ({
         weight,
-        member_id: this.members[i].id
-      }))
-      await this.$repositories.assignment.bulkAssign(this.projectId, {
-        strategy_name: this.selectedStrategy,
-        workloads
-      })
-      this.isWaiting = false
-      this.$emit('assigned')
+        member_id: this.members[i].id,
+      }));
+      console.log("Payload for bulkAssign:", { strategy_name: this.selectedStrategy, workloads });
+      try {
+        await this.$repositories.assignment.bulkAssign(this.projectId, {
+          strategy_name: this.selectedStrategy,
+          workloads,
+        });
+        console.log("Members assigned successfully.");
+        this.$emit("assigned");
+      } catch (error) {
+        console.error("Error assigning members:", error);
+        this.$toasted.error("Error assigning members. Please check console for details.");
+      } finally {
+        this.isWaiting = false;
+      }
     },
+
     cancel() {
-      this.$emit('cancel')
-    }
-  }
+      console.log("Assignment cancelled.");
+      this.$emit("cancel");
+    },
+  },
 })
 </script>
+
+<style scoped>
+/* Add your component-specific styles here */
+</style>
