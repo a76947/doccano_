@@ -10,6 +10,7 @@ from examples.models import Example
 from django.db.models import Count
 from rest_framework.exceptions import NotFound
 from rest_framework.views import APIView
+from collections import defaultdict
 
 from projects.models import Project, PerspectiveAnswer
 
@@ -148,16 +149,29 @@ class DiscrepancyAnalysisView(APIView):
                     # Filtrar as anotações para incluir apenas os anotadores que deram a resposta correta
                     labels = [label for label in labels if label['user'] in matching_annotators]
                     
-                    # Recalcular totais e percentagens apenas com os anotadores filtrados
-                    total_labels = sum(label['count'] for label in labels)
+                    # Recalcular totais e percentagens agregando por label
+                    aggregated = defaultdict(int)
+                    for label in labels:
+                        aggregated[label['label__text']] += label['count']
+
+                    total_labels = sum(aggregated.values())
                     if total_labels == 0:
                         continue
-                        
-                    percentages = {label['label__text']: (label['count'] / total_labels) * 100 for label in labels}
+
+                    percentages = {k: (v / total_labels) * 100 for k, v in aggregated.items()}
                     max_percentage = max(percentages.values())
                     annotators = matching_annotators
                 else:
-                    percentages = {label['label__text']: (label['count'] / total_labels) * 100 for label in labels}
+                    # Agrupar contagens por label para considerar todos os usuários
+                    aggregated = defaultdict(int)
+                    for label in labels:
+                        aggregated[label['label__text']] += label['count']
+
+                    total_labels = sum(aggregated.values())
+                    if total_labels == 0:
+                        continue
+
+                    percentages = {k: (v / total_labels) * 100 for k, v in aggregated.items()}
                     max_percentage = max(percentages.values())
                     annotators = all_annotators
                     
