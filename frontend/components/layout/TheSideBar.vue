@@ -38,7 +38,6 @@ import {
   mdiHome,
   mdiLabel,
   mdiPlayCircleOutline,
-  mdiHistory,
   mdiViewDashboard,
   mdiAlertCircleOutline,
 

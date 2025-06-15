@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import PermissionListView, GroupListView, GroupCreateView, GroupDeleteView
+from .views import PermissionListView, GroupListView, GroupCreateView, GroupDeleteView, GroupDetailView
 
 
 urlpatterns = [

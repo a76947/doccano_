@@ -594,7 +594,7 @@ export default {
       // Delete Question
       dialogDeleteQuestion: false,
       deletingQuestion: null,
-      deletingQuestionGroup: null
+      deletingQuestionGroup: null,
 
       examples: [],
       selectedExample: null,
