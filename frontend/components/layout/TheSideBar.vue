@@ -176,6 +176,12 @@ export default {
           text: 'Annotation Distribution',
           link: 'annotation-distribution',
           isVisible: true
+        },
+        {
+          icon: mdiChartBar,
+          text: 'Estatísticas do Histórico',
+          link: 'history-stats',
+          isVisible: true
         }
       ]
       return items.filter((item) => item.isVisible)

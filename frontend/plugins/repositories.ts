@@ -42,6 +42,7 @@ import { ApiAnswerRepository } from '~/repositories/answerule/answerRuleReposito
 
 import { ApiRuleDiscussionRepository } from '~/repositories/ruleDiscussion/apiRuleDiscussionRepository'
 
+import { ApiStatsRepository } from '@/repositories/stats/apiStatsRepository'
 
 export interface Repositories {
   // User
@@ -106,6 +107,8 @@ export interface Repositories {
   ruleDiscussion: ApiRuleDiscussionRepository
 
   label: APILabelRepository
+
+  stats: ApiStatsRepository
 }
 
 declare module 'vue/types/vue' {
@@ -179,7 +182,9 @@ const repositories: Repositories = {
 
   annotation: new APIAnnotationRepository(),
 
-  label: new APILabelRepository()
+  label: new APILabelRepository(),
+
+  stats: new ApiStatsRepository()
 }
 
 const plugin: Plugin = (_, inject) => {
