@@ -6,6 +6,16 @@
           <v-card-title>
             Dataset Entries
             <v-spacer></v-spacer>
+            <!-- Add PDF Report Button -->
+            <v-btn
+              color="primary"
+              class="mr-2"
+              @click="generatePDFReport"
+              :loading="generatingReport"
+            >
+              <v-icon left>mdi-file-pdf-box</v-icon>
+              Generate PDF Report
+            </v-btn>
             <!-- Add Perspective Filters -->
             <v-dialog v-model="perspectiveFilterDialog" max-width="600px">
               <template v-slot:activator="{ on, attrs }">
@@ -176,6 +186,7 @@ export default {
         entries: []
       },
       loadingStats: false,
+      generatingReport: false,
       headers: [
         { text: 'ID', value: 'id', width: '80px' },
         { text: 'Text', value: 'text' },
@@ -502,6 +513,140 @@ export default {
       this.selectedPerspectiveAnswers = {}
       this.perspectiveFilterDialog = false
       this.fetchDatasetStats()
+    },
+
+    async generatePDFReport() {
+      this.generatingReport = true
+      try {
+        // Prepare query parameters
+        const params = new URLSearchParams()
+        
+        // Add current filters
+        if (Object.keys(this.selectedPerspectiveAnswers).length > 0) {
+          params.append('perspective_filters', JSON.stringify(this.selectedPerspectiveAnswers))
+        }
+
+        // Add other filters if they exist
+        if (this.options.sortBy && this.options.sortBy.length > 0) {
+          const sortDirection = this.options.sortDesc[0] ? '-' : ''
+          params.append('ordering', `${sortDirection}${this.options.sortBy[0]}`)
+        }
+
+        const url = `/v1/projects/${this.projectId}/metrics/dataset-report?${params.toString()}`
+        console.log('Making PDF request to:', url)
+        console.log('Request params:', params.toString())
+
+        // Make the request to generate PDF
+        const response = await this.$axios.get(
+          url,
+          { 
+            responseType: 'blob',
+            headers: {
+              'Accept': 'application/pdf, application/json'
+            }
+          }
+        )
+
+        console.log('Response received:', {
+          type: response.headers['content-type'],
+          size: response.data.size
+        })
+
+        // Check if the response is an error message
+        if (response.headers['content-type']?.includes('application/json') || 
+            response.headers['content-type']?.includes('text/plain')) {
+          const reader = new FileReader()
+          const errorText = await new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result)
+            reader.readAsText(response.data)
+          })
+          console.log('Error response text:', errorText)
+          try {
+            const errorData = JSON.parse(errorText)
+            throw new TypeError(errorData.error || errorData.detail || 'Failed to generate PDF')
+          } catch (e) {
+            if (e instanceof SyntaxError) {
+              // If JSON parsing fails, use the raw error text
+              throw new TypeError(errorText || 'Failed to generate PDF')
+            }
+            throw e
+          }
+        }
+
+        // Verify we have a PDF response
+        if (!response.headers['content-type']?.includes('application/pdf')) {
+          throw new TypeError(`Server returned unexpected content type: ${response.headers['content-type']}`)
+        }
+
+        // Create a blob from the PDF data
+        const blob = new Blob([response.data], { type: 'application/pdf' })
+        console.log('Created blob:', {
+          type: blob.type,
+          size: blob.size
+        })
+        
+        // Create a URL for the blob
+        const blobUrl = window.URL.createObjectURL(blob)
+        console.log('Created blob URL:', blobUrl)
+        
+        // Create a temporary link element
+        const link = document.createElement('a')
+        link.href = blobUrl
+        
+        // Set the filename
+        const date = new Date().toISOString().split('T')[0]
+        link.download = `annotation-distribution-report-${date}.pdf`
+        
+        // Append to body, click and remove
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Clean up the URL
+        window.URL.revokeObjectURL(blobUrl)
+        
+        this.$store.dispatch('notification/open', {
+          message: 'PDF report generated successfully',
+          type: 'success'
+        })
+      } catch (error) {
+        console.error('Error generating PDF report:', error)
+        console.error('Error details:', {
+          message: error.message,
+          response: error.response,
+          status: error.response?.status,
+          data: error.response?.data
+        })
+
+        // Try to get a more detailed error message
+        let errorMessage = error.message
+        if (error.response?.data instanceof Blob) {
+          try {
+            const reader = new FileReader()
+            const errorText = await new Promise((resolve) => {
+              reader.onload = () => resolve(reader.result)
+              reader.readAsText(error.response.data)
+            })
+            try {
+              const errorData = JSON.parse(errorText)
+              errorMessage = errorData.error || errorData.detail || errorMessage
+            } catch (e) {
+              if (!(e instanceof SyntaxError)) {
+                errorMessage = errorText || errorMessage
+              }
+            }
+          } catch (e) {
+            console.error('Error reading error response:', e)
+          }
+        }
+
+        this.$store.dispatch('notification/open', {
+          message: 'Failed to generate PDF report: ' + errorMessage,
+          type: 'error'
+        })
+      } finally {
+        this.generatingReport = false
+      }
     }
   }
 }
