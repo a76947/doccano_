@@ -5,7 +5,8 @@ export class CommentItem {
     readonly username: string,
     readonly example: number,
     readonly text: string,
-    readonly createdAt: string
+    readonly createdAt: string,
+    readonly label: number | null
   ) {}
 
   by(userId: number) {

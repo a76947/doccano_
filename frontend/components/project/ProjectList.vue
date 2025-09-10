@@ -39,6 +39,9 @@
         dateFormat(dateParse(item.createdAt, 'YYYY-MM-DDTHH:mm:ss'), 'YYYY/MM/DD HH:mm')
       }}</span>
     </template>
+    <template #[`item.version`]="{ item }">
+      <span>{{ item.version }}</span>
+    </template>
     <template #[`item.tags`]="{ item }">
       <v-chip v-for="tag in item.tags" :key="tag.id" outlined v-text="tag.text" />
     </template>
@@ -96,6 +99,7 @@ export default Vue.extend({
         { text: this.$t('generic.type'), value: 'projectType' },
         { text: 'Created', value: 'createdAt' },
         { text: 'Author', value: 'author' },
+        { text: 'Version', value: 'version' },
         { text: 'Tags', value: 'tags', sortable: false }
       ]
     }

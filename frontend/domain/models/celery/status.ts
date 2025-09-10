@@ -1,5 +1,8 @@
 export class Status {
-  ready: boolean
-  result: object
-  error: any
+  ready: boolean;
+  successful: boolean;
+  failed: boolean;
+  status: string;
+  result: any;
+  error: any;
 }

@@ -1,0 +1,173 @@
+Antes de fazer partição com linux tentei vm. VM é demasiado lento e não compensa.
+portanto, primeiro, fazer uma partição vazia através do windows. O meu grupo dedicou 100gb.
+Depois, podem ver um tutorial de como fazer dualboot. Vão precisar de uma pen com o .iso do ubuntu.
+Nós usámos Ubuntu 24.04.2 LTS.
+Instalem tudo ubuntu-related na partiçao, porque depois de LES podem só ir ao windows e jogar a partiçao po lixo e fica tudo como devia estar.
+
+
+Depois de instalar, instalem logo o vscode:
+
+https://code.visualstudio.com/docs/setup/linux#_install-vs-code-on-linux
+"download and install the .deb package (64-bit)"<--
+
+
+Instalar github desktop:
+wget -qO - https://mirror.mwt.me/shiftkey-desktop/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/mwt-desktop.gpg > /dev/null
+
+sudo sh -c 'echo "deb [arch=amd64 signed-by=/usr/share/keyrings/mwt-desktop.gpg] https://mirror.mwt.me/shiftkey-desktop/deb/ any main" > /etc/apt/sources.list.d/mwt-desktop.list'
+
+sudo apt update && sudo apt install github-desktop
+
+
+Um dos elementos do grupo deve criar um repo no github pq depois vao instalar o código a partir desse, para q possam editar.
+
+
+
+
+Backend:
+
+sudo apt update
+sudo apt install git
+sudo apt install postgresql postgresql-contrib
+
+
+cd backend
+sudo apt install python3.8 python3.8-venv python3.8-dev
+	Se unable to locate:
+	sudo add-apt-repository ppa:deadsnakes/ppa
+	sudo apt update
+	sudo apt install python3.8 python3.8-venv python3.8-dev
+
+	
+
+sudo apt install curl
+curl -sSL https://install.python-poetry.org | python3 -
+export PATH="$HOME/.local/bin:$PATH"
+source ~/.bashrc
+
+(restart pc!)
+cd backend
+
+poetry env use python3.8
+poetry env info --path
+poetry run python --version
+poetry install
+
+[Agora, preparar A DB para depois fazer migrate!]
+[Ainda com cd backend, fazer:]
+	poetry add psycopg2-binary==2.9.7
+	
+
+^^^^^^^^^^^^^^^^^
+sudo -u postgres psql
+
+
+CREATE USER doccano_admin_ WITH PASSWORD 'doccano_pass' CREATEDB;
+
+CREATE DATABASE doccanoo OWNER doccano_admin_;
+
+GRANT ALL PRIVILEGES ON DATABASE doccanoo TO doccano_admin_;
+
+ALTER SCHEMA public OWNER TO doccano_admin_;
+GRANT ALL ON SCHEMA public TO doccano_admin_;
+GRANT CREATE ON SCHEMA public TO doccano_admin_;
+
+\q
+^^^^^^^^^^^^^^^^^
+export DATABASE_URL="postgres://doccano_admin_:doccano_pass@localhost:5432/doccanoo?sslmode=disable"
+echo $DATABASE_URLcd 
+
+poetry self add poetry-plugin-shell
+poetry shell
+	pip install --upgrade setuptools
+	python manage.py migrate
+	python manage.py create_roles
+	python manage.py create_admin --noinput --username "admin" --email "admin@example.com" --password "password"
+	python manage.py runserver
+	
+Noutro terminal, fazer cd backend
+
+export DATABASE_URL="postgres://doccano_admin_:doccano_pass@localhost:5432/doccanoo?sslmode=disable"
+poetry shell
+	celery --app=config worker --loglevel=INFO --concurrency=1
+	
+[Está quase, depois vêm os fixes, CTRL+C em tudo!]
+
+###Frontend:
+
+cd frontend
+sudo apt install npm OU sudo apt install cmdtest
+npm install OU yarn install
+npx nuxt dev OU yarn dev, é igual na prática.
+
+ele deu prompt p instalar uma cena, instalei
+
+depois:
+rm -rf node_modules package-lock.json
+npm install
+npx nuxt dev
+
+CTRL+C
+
+
+ir ao ficheiro frontend\services\api.service.js 
+e em baixo de
+baseURL: process.env.baseUrl,
+pôr withCredentials: true 
+
+
+###Backend:
+
+no ficheiro backend/config/settings/base.py
+
+Alterar oCSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", [])
+
+para:
+
+CSRF_TRUSTED_ORIGINS = env.list(
+    "CSRF_TRUSTED_ORIGINS",
+    [
+        "http://127.0.0.1:3000",
+        "http://0.0.0.0:3000",
+        "http://localhost:3000",
+        "http://192.168.1.3:3000"   <--- este é oque vos aparece no frontend!!!
+    ],
+)
+
+Alterar a linha 244
+
+CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1:3000", "http://0.0.0.0:3000", "http://localhost:3000"]
+
+para
+
+CSRF_TRUSTED_ORIGINS = ["http://127.0.0.1:3000ba", "http://0.0.0.0:3000", "http://localhost:3000", "ip que vos aparece no frontend"]
+
+
+cuidado, pq tem de começar com http e nao pode acabar com "/"
+
+------------------------------------------------------------------------------------------------------------------------------------
+
+Agora, para entrar :
+
+Backend:
+
+
+cd backend
+poetry shell
+
+export DATABASE_URL="postgres://doccano_admin_:doccano_pass@localhost:5432/doccanoo?sslmode=disable"
+
+python manage.py runserver
+
+e, noutro terminal, 
+
+cd backend
+poetry shell
+
+export DATABASE_URL="postgres://doccano_admin:doccano_pass@localhost:5432/doccano?sslmode=disable"
+
+celery --app=config worker --loglevel=INFO --concurrency=1
+
+
+----------
+

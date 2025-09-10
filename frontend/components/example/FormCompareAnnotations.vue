@@ -77,7 +77,8 @@ export default Vue.extend({
     return {
       selectedDocument: null,
       user1: null,
-      user2: null
+      user2: null,
+      isChecking: false
     }
   },
 
@@ -88,13 +89,32 @@ export default Vue.extend({
   },
 
   methods: {
-    compare() {
-      if (this.isValid) {
+    async compare() {
+      if (!this.isValid || this.isChecking) return;
+      
+      this.isChecking = true;
+      try {
+        // Check if we can get the comparison data before emitting
+        await this.$services.annotation.getComparisonData(
+          this.projectId,
+          this.selectedDocument,
+          this.user1,
+          this.user2
+        );
+        
+        // Only emit if no error occurred
         this.$emit('compare', {
           documentId: this.selectedDocument,
           user1: this.user1,
           user2: this.user2
-        })
+        });
+      } catch (error) {
+        console.error('Error checking comparison data:', error);
+        this.$emit('error', 'Database unavailable at the moment, please try again later.');
+        // Don't emit compare event when there's an error
+        return;
+      } finally {
+        this.isChecking = false;
       }
     }
   }

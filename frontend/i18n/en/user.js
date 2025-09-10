@@ -3,5 +3,6 @@ export default {
   signOut: 'Sign Out',
   username: 'Username',
   password: 'Password',
-  socialLogin: 'Login With {provider}'
+  socialLogin: 'Login With {provider}',
+  manageUser: 'Manage User'
 }

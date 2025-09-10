@@ -1,6 +1,6 @@
 <template>
   <v-card>
-    <v-card-title>Member's Progress</v-card-title>
+    <v-card-title>Estatísticas de Anotações</v-card-title>
     <v-divider />
     <v-card-text>
       <div v-for="(item, index) in stats.progress" :key="index" class="mb-2">

@@ -1,8 +1,10 @@
 <script>
-import { Pie } from 'vue-chartjs'
+import { Pie, mixins } from 'vue-chartjs'
+const { reactiveProp } = mixins
 
 export default {
   extends: Pie,
+  mixins: [reactiveProp],
   props: {
     chartData: {
       type: Object,
@@ -12,17 +14,50 @@ export default {
       type: Object,
       default: () => ({
         responsive: true,
-        maintainAspectRatio: false
+        maintainAspectRatio: false,
+        legend: {
+          display: true,
+          position: 'right',
+          labels: {
+            boxWidth: 12,
+            padding: 10
+          }
+        },
+        tooltips: {
+          enabled: true,
+          mode: 'index',
+          intersect: false
+        }
       })
     }
   },
   
-  mounted() {
-    // Render once on mount, no watchers to cause loops
-    this.renderChart(this.chartData, this.options);
-  }
+  watch: {
+    chartData: {
+      handler(newData) {
+        console.log('Chart data changed:', newData)
+        this.$nextTick(() => {
+          this.renderChart(newData, this.options)
+        })
+      },
+      deep: true
+    }
+  },
   
-  // No watchers - will not auto-update on data changes
-  // Parent must provide a new key to force re-rendering
+  mounted() {
+    console.log('PieChart mounted with data:', this.chartData)
+    this.$nextTick(() => {
+      this.renderChart(this.chartData, this.options)
+    })
+  }
 }
 </script>
+
+<style scoped>
+canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+}
+</style>

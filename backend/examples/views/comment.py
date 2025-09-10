@@ -19,10 +19,17 @@ class CommentList(generics.ListCreateAPIView):
 
     def get_queryset(self):
         queryset = Comment.objects.filter(example__project_id=self.kwargs["project_id"])
+        label_param = self.request.query_params.get("label")
+        if label_param is not None:
+            queryset = queryset.filter(label=label_param)
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(example_id=self.request.query_params.get("example"), user=self.request.user)
+        serializer.save(
+            example_id=self.request.query_params.get("example"),
+            user=self.request.user,
+            label=self.request.query_params.get("label"),
+        )
 
     def delete(self, request, *args, **kwargs):
         delete_ids = request.data["ids"]

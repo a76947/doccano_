@@ -28,10 +28,10 @@
     </template>
     <template #[`item.backgroundColor`]="props">
       <v-chip
-        :color="props.item.backgroundColor"
-        :text-color="$contrastColor(props.item.backgroundColor)"
+        :color="props.item.backgroundColor || '#CCCCCC'"
+        :text-color="$contrastColor(props.item.backgroundColor || '#CCCCCC')"
       >
-        {{ props.item.backgroundColor }}
+        {{ props.item.backgroundColor || 'No color' }}
       </v-chip>
     </template>
     <template #[`item.actions`]="{ item }">

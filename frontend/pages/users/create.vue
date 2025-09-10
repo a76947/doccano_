@@ -6,6 +6,14 @@
         <v-spacer></v-spacer>
       </v-card-title>
 
+      <!-- Error message as pop-up central superior -->
+      <transition name="fade">
+        <div v-if="errorMessage" class="error-message">
+          <v-icon small class="mr-2" color="error">mdi-alert-circle</v-icon>
+          {{ errorMessage }}
+        </div>
+      </transition>
+
       <!-- Success message with transition -->
       <transition name="fade">
         <div v-if="showSuccess" class="success-message">
@@ -15,63 +23,60 @@
       </transition>
 
       <v-card-text>
-  <v-form v-model="valid">
-    <v-alert v-show="showError" v-model="showError" type="error" dismissible>
-      {{ errorMessage }}
-    </v-alert>
-    <v-text-field
-      v-model="userData.username"
-      :rules="userNameRules('Username is required')"
-      label="Username"
-      name="username"
-      :prepend-icon="mdiAccount"
-      type="text"
-      autofocus
-      dense
-    />
-    <v-text-field
-      v-model="userData.first_name"
-      label="First Name" 
-      name="first_name"
-      :prepend-icon="mdiAccount"
-      dense
-    />
-    <v-text-field
-      v-model="userData.last_name"
-      label="Last Name"
-      name="last_name" 
-      :prepend-icon="mdiAccount"
-      dense
-    />
-    <v-text-field
-      v-model="userData.email"
-      :rules="emailRules"
-      label="Email"
-      name="email"
-      :prepend-icon="mdiEmail"
-      type="email"
-      dense
-    />
-    <v-text-field
-      v-model="userData.password1"
-      :rules="passwordRules('Password is required')"
-      label="Password"
-      name="password1"
-      :prepend-icon="mdiLock"
-      type="password"
-      dense
-    />
-    <v-text-field
-      v-model="userData.password2"
-      :rules="[...passwordRules('Confirm password is required'), passwordMatchRule]"
-      label="Confirm Password"
-      name="password2"
-      :prepend-icon="mdiLock"
-      type="password"
-      dense
-    />
-  </v-form>
-</v-card-text>
+        <v-form v-model="valid">
+          <v-text-field
+            v-model="userData.username"
+            :rules="userNameRules('Username is required')"
+            label="Username"
+            name="username"
+            :prepend-icon="mdiAccount"
+            type="text"
+            autofocus
+            dense
+          />
+          <v-text-field
+            v-model="userData.first_name"
+            label="First Name" 
+            name="first_name"
+            :prepend-icon="mdiAccount"
+            dense
+          />
+          <v-text-field
+            v-model="userData.last_name"
+            label="Last Name"
+            name="last_name" 
+            :prepend-icon="mdiAccount"
+            dense
+          />
+          <v-text-field
+            v-model="userData.email"
+            :rules="emailRules"
+            label="Email"
+            name="email"
+            :prepend-icon="mdiEmail"
+            type="email"
+            dense
+          />
+          <v-text-field
+            v-model="userData.password1"
+            :rules="passwordRules('Password is required')"
+            label="Password"
+            name="password1"
+            :prepend-icon="mdiLock"
+            type="password"
+            dense
+          />
+          <v-text-field
+            v-model="userData.password2"
+            :rules="[...passwordRules('Confirm password is required'), passwordMatchRule]"
+            label="Confirm Password"
+            name="password2"
+            :prepend-icon="mdiLock"
+            type="password"
+            dense
+          />
+        </v-form>
+      </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
         <v-btn
@@ -97,7 +102,7 @@
 
 <script lang="ts">
 import Vue from 'vue'
-import { mdiAccount, mdiLock, mdiEmail, mdiCheckCircle, mdiMapMarker } from '@mdi/js'
+import { mdiAccount, mdiLock, mdiEmail, mdiCheckCircle, mdiMapMarker, mdiAlertCircle } from '@mdi/js'
 import { userNameRules, passwordRules } from '@/rules/index'
 import { APIAuthRepository } from '@/repositories/auth/apiAuthRepository'
 
@@ -107,7 +112,6 @@ export default Vue.extend({
   data() {
     return {
       valid: false,
-      showError: false,
       showSuccess: false,
       errorMessage: '',
       userData: {
@@ -125,6 +129,7 @@ export default Vue.extend({
       mdiEmail,
       mdiCheckCircle,
       mdiMapMarker,
+      mdiAlertCircle,
       emailRules: [
         (v: string) => !!v || 'Email is required',
         (v: string) => /.+@.+\..+/.test(v) || 'Email must be valid'
@@ -145,31 +150,14 @@ export default Vue.extend({
       if (!this.valid) return
 
       try {
-        this.showError = false
+        this.errorMessage = '' // Clear any previous error message
         const apiAuthRepository = new APIAuthRepository()
         await apiAuthRepository.createUser(this.userData)
         
         this.showSuccess = true
       } catch (error) {
         console.error('Error creating user:', error.response ? error.response.data : error.message)
-        
-        this.showError = true
-        if (error.response && error.response.data) {
-          if (error.response.data.non_field_errors) {
-            this.errorMessage = error.response.data.non_field_errors.join(', ')
-          } else if (typeof error.response.data === 'object') {
-            this.errorMessage = Object.entries(error.response.data)
-              .map(([field, errors]) => {
-                const errorValue = Array.isArray(errors) ? errors.join(', ') : errors
-                return `${field}: ${errorValue}`
-              })
-              .join('; ')
-          } else {
-            this.errorMessage = 'Failed to connect to the database, try again later'
-          }
-        } else {
-          this.errorMessage = error.message || 'Failed to create user'
-        }
+        this.errorMessage = 'Database unavailable at the moment, please try again later.'
       }
     },
     goBack() {
@@ -194,17 +182,23 @@ export default Vue.extend({
 }
 
 .success-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
   background-color: #e6f4ea;
   color: #2e7d32;
-  padding: 12px 16px;
-  border-radius: 6px;
-  margin: 16px;
+  padding: 12px 24px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   font-weight: 500;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
 }
 
+/* Fade para o snackbar */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.4s ease;
@@ -212,5 +206,22 @@ export default Vue.extend({
 .fade-enter,
 .fade-leave-to {
   opacity: 0;
+}
+
+.error-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  background-color: #fdecea;
+  color: #b71c1c;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
 }
 </style>

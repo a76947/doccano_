@@ -7,11 +7,8 @@ function toModel(item: { [key: string]: any }): MemberItem {
 
 function toPayload(item: MemberItem): { [key: string]: any } {
   return {
-    id: item.id,
     user: item.user,
-    role: item.role,
-    username: item.username,
-    rolename: item.rolename
+    role: item.role
   }
 }
 

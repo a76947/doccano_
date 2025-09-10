@@ -26,6 +26,7 @@ export const mutations = {
 }
 
 export const getters = {
+  // já existentes...
   isAuthenticated(state) {
     return state.isAuthenticated
   },
@@ -37,6 +38,14 @@ export const getters = {
   },
   isStaff(state) {
     return state.isStaff
+  },
+
+  // novo getter:
+  currentUser(state) {
+    return {
+      id: state.id,
+      username: state.username
+    }
   }
 }
 
@@ -88,5 +97,15 @@ export const actions = {
     if (process.browser) {
       window.location = '/auth'
     }
+  },
+
+  // Fetch social login links
+  async fetchSocialLink() {
+    try {
+      return await this.$repositories.auth.socialLink()
+    } catch (error) {
+      console.error('Error fetching social links:', error)
+      return {}
+    }
   }
-}
+} 

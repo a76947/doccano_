@@ -29,7 +29,23 @@ import { APISegmentationRepository } from '~/repositories/tasks/apiSegmentationR
 
 // IMPORTA O TEU NOVO REPOSITÓRIO
 import { ApiPerspectiveRepository } from '@/repositories/perspective/apiPerspectiveRepository'
+import { APIAnnotationHistoryRepository } from '@/repositories/annotationHistory/apiAnnotationHistoryRepository'
+
+
 import { APIAnnotationRepository } from '@/repositories/annotation/apiAnnotationRepository'
+import { ApiDiscrepancieRepository } from '~/repositories/discrepancies/apiDiscrepancieRepository'
+
+import { ApiRulesRepository } from '~/repositories/rules/apiRulesRepository'
+
+import { ApiVotingRepository } from '~/repositories/votation/votingRepository'
+
+import { ApiAnswerRepository } from '~/repositories/answerule/answerRuleRepository'
+
+import { ApiRuleDiscussionRepository } from '~/repositories/ruleDiscussion/apiRuleDiscussionRepository'
+
+import { ApiStatsRepository } from '@/repositories/stats/apiStatsRepository'
+
+import { APIDiscrepancyHistoryRepository } from '@/repositories/discrepancyHistory/apiDiscrepancyHistoryRepository'
 
 export interface Repositories {
   // User
@@ -61,6 +77,7 @@ export interface Repositories {
   // Download
   downloadFormat: APIDownloadFormatRepository
   download: APIDownloadRepository
+  annotationHistory: APIAnnotationHistoryRepository
 
   // Label Type
   categoryType: APILabelRepository
@@ -78,8 +95,28 @@ export interface Repositories {
   // Perspective
   perspective: ApiPerspectiveRepository
 
+
+  // Discrepancies
+
+  rules: ApiRulesRepository // Add this line
+
+  voting: ApiVotingRepository // Add this line
+
+  answer: ApiAnswerRepository
+  discrepancy: ApiDiscrepancieRepository // Add this line
+
+
+
   // Annotation
   annotation: APIAnnotationRepository
+
+  ruleDiscussion: ApiRuleDiscussionRepository
+
+  label: APILabelRepository
+
+  stats: ApiStatsRepository
+
+  discrepancyHistory: APIDiscrepancyHistoryRepository
 }
 
 declare module 'vue/types/vue' {
@@ -118,6 +155,7 @@ const repositories: Repositories = {
   // Download
   downloadFormat: new APIDownloadFormatRepository(),
   download: new APIDownloadRepository(),
+  annotationHistory: new APIAnnotationHistoryRepository(),
 
   // Label Type
   categoryType: new APILabelRepository('category-type'),
@@ -132,11 +170,32 @@ const repositories: Repositories = {
   boundingBox: new APIBoundingBoxRepository(),
   segmentation: new APISegmentationRepository(),
 
-  // Perspective
-  perspective: {} as ApiPerspectiveRepository, // Will be replaced in services.ts
 
+
+  rules: new ApiRulesRepository(),
+
+  voting: new ApiVotingRepository(), // Will be replaced in services.ts
+
+  answer: new ApiAnswerRepository(),
+
+  // Perspective
+
+
+  perspective: {} as ApiPerspectiveRepository // Will be replaced in services.ts
+  ,
+  discrepancy: new ApiDiscrepancieRepository()
+,
   // Annotation
-  annotation: new APIAnnotationRepository()
+
+  ruleDiscussion: new ApiRuleDiscussionRepository(),
+
+  annotation: new APIAnnotationRepository(),
+
+  label: new APILabelRepository(),
+
+  stats: new ApiStatsRepository(),
+
+  discrepancyHistory: new APIDiscrepancyHistoryRepository()
 }
 
 const plugin: Plugin = (_, inject) => {

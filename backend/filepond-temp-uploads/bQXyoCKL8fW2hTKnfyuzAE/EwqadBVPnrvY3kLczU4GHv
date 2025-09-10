@@ -1,0 +1,28 @@
+-comando para o moba
+ssh a81424@fct-deei-linux.ualg.pt
+passe : v#k8y5Gh
+
+
+-comando para criar uma pasta 
+mkdir nome pasta
+
+-Use para obter uma lista dos comandos, chamadas ao sistema e funções de biblioteca relacionadas com o tópico tempo
+ apropos time
+
+
+
+-------Caso de estudo (4 semanas)
+prapara um código que multiplique matrizes
+
+> matmult - sn <matA>
+	  <mat B>
+          <mat C>
+em que mat{A,B,C} são ficheiros com matrizes quadradas de dimensão n
+
+1. Na implementação sequencial
+a) escolha as dimensões de n e justifique a escolha
+b)apresente os tempos de execução obtidos na maquina fct-deei-linux
+
+2. MPI
+3.OpenMP
+4.MPI + open MP

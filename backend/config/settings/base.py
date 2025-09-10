@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     "projects",
     "metrics",
     "users",
-    "groups.apps.GroupsConfig",  # Use the AppConfig instead of 'groups'
+
     "data_import",
     "data_export",
     "auto_labeling",
@@ -73,7 +73,6 @@ INSTALLED_APPS = [
     "health_check.contrib.celery",
     "django_cleanup",
     "todo_api",
-    "channels",
 ]
 
 
@@ -87,6 +86,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    # Custom middleware that returns HTTP 503 when DB is unavailable
+    "api.middleware.DatabaseHealthMiddleware",
 ]
 
 

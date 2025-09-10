@@ -42,6 +42,7 @@ export default {
    ** Plugins to load before mounting the App
    */
   plugins: [
+    '~/plugins/db-down.js',
     '~/plugins/filters.js',
     '~/plugins/vue-youtube.js',
     '~/plugins/vue-shortkey.js',

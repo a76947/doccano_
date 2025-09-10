@@ -79,13 +79,13 @@ export class APIUserRepository {
   }
 
   async edit(userId: number, updatedData: Partial<UserItem>): Promise<UserItem> {
-    const url = `/users/${userId}`
+    const url = `/users/${userId}/`
     const response = await this.request.patch(url, updatedData)
     return toModel(response.data)
   }
 
   async delete(userId: number): Promise<void> {
-    const url = `/users/${userId}`
+    const url = `/users/${userId}/`
     await this.request.delete(url)
   }
 }

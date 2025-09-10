@@ -14,6 +14,7 @@ export class ApiPerspectiveRepository {
   }
 
   async createGroup(projectId: string | number, payload: any) {
+    console.log('aqui no repository', payload)
     const url = `/projects/${projectId}/perspective-groups/`
     const response = await ApiService.post(url, payload)
     return response.data
@@ -49,4 +50,15 @@ export class ApiPerspectiveRepository {
     return response.data
   }
 
+  async update(projectId: string | number, questionId: string | number, payload: any) {
+    const url = `/projects/${projectId}/perspectives/${questionId}/`
+    const response = await ApiService.put(url, payload)
+    return response.data
+  }
+
+  async deleteGroup(projectId: string | number, groupId: string | number) {
+    const url = `/projects/${projectId}/perspective-groups/${groupId}/`
+    const response = await ApiService.delete(url)
+    return response.data
+  }
 }

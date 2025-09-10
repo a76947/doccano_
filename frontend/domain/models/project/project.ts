@@ -55,6 +55,7 @@ export class Project {
   name: string
   description: string
   projectType: ProjectType
+  version: string
   constructor(
     readonly id: number,
     readonly _name: string,
@@ -73,7 +74,8 @@ export class Project {
     readonly createdAt: string = '',
     readonly updatedAt: string = '',
     readonly author: string = '',
-    readonly isTextProject: boolean = false
+    readonly isTextProject: boolean = false,
+    readonly _version: string = '1.0'
   ) {
     if (!validateMinLength(_name)) {
       throw new Error('Project name is required')
@@ -90,6 +92,7 @@ export class Project {
     this.name = _name.trim()
     this.description = _description.trim()
     this.projectType = _projectType as ProjectType
+    this.version = _version
   }
 
   static create(
@@ -105,7 +108,8 @@ export class Project {
     enableGraphemeMode: boolean,
     useRelation: boolean,
     tags: TagItem[],
-    allowMemberToCreateLabelType: boolean
+    allowMemberToCreateLabelType: boolean,
+    version: string = '1.0'
   ) {
     return new Project(
       id,
@@ -120,7 +124,13 @@ export class Project {
       enableGraphemeMode,
       useRelation,
       tags,
-      allowMemberToCreateLabelType
+      allowMemberToCreateLabelType,
+      [],
+      '',
+      '',
+      '',
+      false,
+      version
     )
   }
 

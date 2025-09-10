@@ -1,38 +1,14 @@
 <template>
   <v-card>
     <v-card-title>
-      <template v-if="!hasGroups">
-        <v-btn 
-          class="text-capitalize" 
-          color="primary" 
-          @click.stop="openCreateGroupDialog()"
-          v-if="isAdmin"
-        >
-          Create Perspective Group
-        </v-btn>
-        <v-tooltip v-else bottom>
-          <template #activator="{ on, attrs }">
-            <v-btn 
-              class="text-capitalize" 
-              color="primary" 
-              disabled
-              v-bind="attrs"
-              v-on="on"
-            >
-              Create Perspective Group
-            </v-btn>
-          </template>
-          <span>Only administrators can create perspective groups</span>
-        </v-tooltip>
-        <v-alert
-          v-if="!isAdmin"
-          type="error"
-          dense
-          class="mt-2"
-        >
-          You do not have permission to create perspective groups. Please contact an administrator.
-        </v-alert>
-      </template>
+      <v-btn 
+        v-if="!hasGroups"
+        class="text-capitalize" 
+        color="primary" 
+        @click.stop="openCreateGroupDialog()"
+      >
+        Create Perspective Group
+      </v-btn>
       <v-alert
         v-else
         type="info"
@@ -43,491 +19,644 @@
       </v-alert>
     </v-card-title>
 
-    <v-card-subtitle v-if="devMode" class="pa-2">
-      <v-chip-group
-        v-model="userRole"
-        mandatory
-        column
-      >
-        <v-chip 
-          value="admin"
-          :color="userRole === 'admin' ? 'primary' : ''"
-          @click="userRole = 'admin'"
-        >
-          Admin Mode
-        </v-chip>
-        <v-chip
-          value="annotator"
-          :color="userRole === 'annotator' ? 'success' : ''" 
-          @click="userRole = 'annotator'"
-        >
-          Annotator Mode
-        </v-chip>
-        <v-chip
-          value="viewer"
-          :color="userRole === 'viewer' ? 'info' : ''"
-          @click="userRole = 'viewer'"
-        >
-          Viewer Mode
-        </v-chip>
-      </v-chip-group>
-    </v-card-subtitle>
-
-    <!-- Group Creation Dialog -->
+    <!-- >>> COLE AQUI: início do Create Group Modal <<< -->
     <v-dialog v-model="dialogCreateGroup" max-width="500px">
       <v-card>
         <v-card-title class="headline">Create Perspective Group</v-card-title>
         <v-card-text>
+          <!-- campos do grupo -->
           <v-text-field
             v-model="editedGroup.name"
-            label="Group Name"
-            :error="showErrors && !editedGroup.name"
-            :error-messages="showErrors && !editedGroup.name ? ['* Required field'] : []"
+            label="Group Name *"
+            :rules="[v => !!v || 'Group name is required']"
             required
+            :error-messages="groupFormErrors.name ? 'Group name is required' : ''"
           />
           <v-textarea
             v-model="editedGroup.description"
             label="Description"
             rows="3"
           />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn text @click="closeGroupDialog">Cancel</v-btn>
-          <v-btn color="primary" text @click="saveGroup">Save</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
 
-    <!-- Question Creation Dialog -->
-    <v-dialog v-model="dialogCreateQuestion" max-width="500px">
-      <v-card>
-        <v-card-title class="headline">Add New Question</v-card-title>
-        <v-card-text>
+          <v-divider class="my-4" />
+
+          <!-- Questão Inicial -->
+          <h3 class="subtitle-1 mb-2">Questão Inicial (obrigatória)</h3>
           <v-text-field
-            v-model="editedQuestion.question"
-            label="Question"
-            :error="showErrors && !editedQuestion.question"
-            :error-messages="showErrors && !editedQuestion.question ? ['* Required field'] : []"
+            v-model="newGroupQuestion.question"
+            label="Texto da Questão *"
+            :rules="[v => !!v || 'Question text is required']"
             required
+            :error-messages="groupFormErrors.question ? 'Question text is required' : ''"
           />
           <v-select
-            v-model="editedQuestion.data_type"
+            v-model="newGroupQuestion.data_type"
             :items="dataTypes"
-            label="Data Type"
-            :error="showErrors && !editedQuestion.data_type"
-            :error-messages="showErrors && !editedQuestion.data_type ? ['* Required field'] : []"
+            label="Tipo de Dado *"
+            :rules="[v => !!v || 'Data type is required']"
             required
+            :error-messages="groupFormErrors.data_type ? 'Data type is required' : ''"
           />
-
-          <!-- Options section - visible for string or int types -->
-          <div v-if="editedQuestion.data_type === 'string' || editedQuestion.data_type === 'int'">
-            <div class="d-flex align-center mb-2">
-              <h3 class="subtitle-1">Answer Options</h3>
-              <v-spacer></v-spacer>
-              <v-btn small color="primary" @click="addOption">
-                <v-icon small left>mdi-plus</v-icon> Add Option
-              </v-btn>
+          <div v-if="newGroupQuestion.data_type==='string' || newGroupQuestion.data_type==='int'">
+            <v-btn small color="primary" @click="newGroupQuestion.options.push('')">
+              <v-icon small left>mdi-plus</v-icon>Add Option
+            </v-btn>
+            <div v-if="groupFormErrors.options" class="error--text caption mt-1">
+              At least two options are required
             </div>
-            
-            <v-alert
-              v-if="showErrors && (editedQuestion.data_type === 'string' 
-              || editedQuestion.data_type === 'int') && editedQuestion.options.length === 0"
-              dense
-              type="error"
-              class="mb-3"
-            >
-              Please add at least one answer option
-            </v-alert>
-            
-            <div v-for="(option, index) in editedQuestion.options" :key="index" class="mb-2 d-flex">
-              <v-text-field
-                v-model="editedQuestion.options[index]"
-                :label="`Option ${index + 1}`"
-                hide-details
-                class="mr-2"
-              />
-              <v-btn icon color="error" @click="removeOption(index)">
-                <v-icon small>mdi-delete</v-icon>
-              </v-btn>
-            </div>
+            <v-text-field
+              v-for="(opt,i) in newGroupQuestion.options"
+              :key="i"
+              v-model="newGroupQuestion.options[i]"
+              :label="`Option ${i+1} *`"
+              :rules="[v => !!v || 'Option is required']"
+              required
+              :error-messages="groupFormErrors.options ? 'Option is required' : ''"
+              class="mt-2"
+            />
           </div>
-
-          <!-- Boolean type doesn't need options as it's always Yes/No -->
-          <v-alert
-            v-if="editedQuestion.data_type === 'boolean'"
-            type="info"
-            dense
-            class="mt-2"
-          >
-            Boolean questions will have Yes/No answer options automatically.
-          </v-alert>
         </v-card-text>
         <v-card-actions>
-          <v-spacer />
-          <v-btn text @click="closeQuestionDialog">Cancel</v-btn>
-          <v-btn color="primary" text @click="saveQuestion">Save</v-btn>
+          <v-spacer/>
+          <v-btn text @click="closeGroupDialog">Cancel</v-btn>
+          <v-btn color="primary" text @click="validateAndSaveGroup">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- Check if there are perspective groups before rendering expansion panels -->
-    <div v-if="!hasGroups" class="text-center pa-5">
-      No perspective groups yet. Click "Create Perspective Group" to add one.
-    </div>
+    <!-- Create Group Modal (igual ao que já tens) -->
+    <!-- … aqui vai o teu <v-dialog v-model="dialogCreateGroup"> … </v-dialog> … -->
 
-    <!-- List of Perspective Groups -->
-    <v-expansion-panels v-else>
-      <v-expansion-panel 
-        v-for="group in validGroups" 
-        :key="group.id"
-      >
+    <!-- Lista de Grupos -->
+    <v-expansion-panels v-if="hasGroups" v-model="expandedPanel">
+      <v-expansion-panel v-for="group in perspectiveGroups" :key="group.id">
         <v-expansion-panel-header>
-          <div class="d-flex align-center">
-            <span class="font-weight-bold">{{ group.name }}</span>
-            <v-spacer></v-spacer>
-            <!-- Add Question button -->
-            <v-btn 
-              color="primary"
-              small
-              class="mr-2"
-              @click.stop="openAddQuestionDialog(group)"
-              v-if="isAdmin"
-            >
-              <v-icon left small>mdi-plus</v-icon>
-              Add Question
-            </v-btn>
-            <v-tooltip v-else bottom>
-              <template #activator="{ on, attrs }">
-                <v-btn 
-                  color="primary"
-                  small
-                  class="mr-2"
-                  disabled
-                  v-bind="attrs"
-                  v-on="on"
-                >
-                  <v-icon left small>mdi-plus</v-icon>
-                  Add Question
-                </v-btn>
-              </template>
-              <span>Only administrators can add questions</span>
-            </v-tooltip>
-            <!-- Answer Questions button -->
-            <v-btn 
-              color="success"
-              small
-              class="mr-2"
-              :disabled="!hasQuestions(group)"
-              @click.stop="openAnswerQuestionsDialog(group)"
-            >
-              <v-icon left small>mdi-text-box-check-outline</v-icon>
-              Answer
-            </v-btn>
-          </div>
+          {{ group.name }}
+          <v-spacer/>
+          <v-btn small color="primary" @click.stop="openAddQuestionDialog(group)">
+            <v-icon left small>mdi-plus</v-icon>
+            Add Question
+          </v-btn>
+          <v-btn 
+            :disabled="
+              !group.questions.length ||
+              group.questions.every(q => answeredPerspectiveIds.includes(q.id))
+            "
+            small 
+            color="success" 
+            @click.stop="openAnswerDialog(group)"
+          >
+            <v-icon left small>mdi-text-box-check-outline</v-icon>
+            Answer
+          </v-btn>
+          <v-btn
+            small
+            color="error"
+            class="ml-2"
+            :disabled="groupHasResponses"
+            @click.stop="openDeleteGroupDialog(group)"
+          >
+            <v-icon left small>mdi-delete</v-icon>
+            Delete Group
+          </v-btn>
         </v-expansion-panel-header>
         <v-expansion-panel-content>
-          <div class="mb-2">
-            <em>{{ group.description }}</em>
-          </div>
-          
-          <v-simple-table v-if="hasQuestions(group)">
-            <template #default>
+          <div v-if="group.questions.length">
+            <v-simple-table>
               <thead>
                 <tr>
-                  <th>Question</th>
-                  <th>Data Type</th>
-                  <th>Actions</th>
+                  <th 
+                    class="sortable" 
+                    @click="sortQuestions(group, 'question')"
+                  >
+                    Question
+                    <v-icon small class="ml-1">
+                      {{ getSortIcon(group, 'question') }}
+                    </v-icon>
+                  </th>
+                  <th 
+                    class="sortable" 
+                    @click="sortQuestions(group, 'data_type')"
+                  >
+                    Type
+                    <v-icon small class="ml-1">
+                      {{ getSortIcon(group, 'data_type') }}
+                    </v-icon>
+                  </th>
+                  <th class="text-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="question in group.questions" :key="question.id">
-                  <td>{{ question.question }}</td>
-                  <td>{{ question.data_type }}</td>
-                  <td class="text-center">
-                    <div class="d-flex justify-end">
-                      <v-btn 
-                        icon 
-                        color="primary"
-                        class="mx-1" 
-                        @click.stop="showQuestionDetails(question)"
-                      >
-                        <v-icon>mdi-eye</v-icon>
-                      </v-btn>
-                      
-                      <!-- Add this button for viewing responses -->
-                      <v-btn 
-                        v-if="isAdmin"
-                        color="info"
-                        class="mx-1"
-                        small
-                        @click.stop="showQuestionResponses(question)"
-                      >
-                        <v-icon left small>mdi-poll</v-icon>
-                        Responses
-                      </v-btn>
-                      
-                      <v-btn 
-                        v-if="isAdmin"
-                        color="error"
-                        class="mx-1"
-                        small
-                        @click.stop="confirmDeleteQuestion(question)"
-                      >
-                        <v-icon left small>mdi-delete</v-icon>
-                        Delete
-                      </v-btn>
-                    </div>
+                <tr v-for="q in group.questions" :key="q.id">
+                  <td>{{ q.question }}</td>
+                  <td>{{ q.data_type }}</td>
+                  <td class="text-right">
+                    <v-btn
+                      small
+                      color="info"
+                      class="mr-2"
+                      @click="showQuestionResponses(q)"
+                    >
+                      <v-icon small left>mdi-eye</v-icon>
+                      View Responses
+                    </v-btn>
+                    <v-btn
+                      small
+                      color="primary"
+                      class="mr-2"
+                      @click="openEditQuestionDialog(group, q)"
+                    >
+                      <v-icon small left>mdi-pencil</v-icon>
+                      Edit
+                    </v-btn>
+                    <v-btn
+                      small
+                      color="error"
+                      @click="openDeleteQuestionDialog(group, q)"
+                    >
+                      <v-icon small left>mdi-delete</v-icon>
+                      Delete
+                    </v-btn>
                   </td>
                 </tr>
               </tbody>
-            </template>
-          </v-simple-table>
+            </v-simple-table>
+          </div>
           <div v-else class="text-center pa-3">
-            No questions yet. Click + to add.
+            No questions yet.
           </div>
         </v-expansion-panel-content>
       </v-expansion-panel>
     </v-expansion-panels>
-
-    <!-- Add a new dialog for answering questions -->
-    <v-dialog v-model="dialogAnswerQuestions" max-width="600px">
+ 
+    <!-- Add Question Dialog -->
+    <v-dialog 
+      v-model="dialogAddQuestion" 
+      max-width="500px" 
+      :persistent="currentGroup?.questions?.length === 0"
+      :hide-overlay="currentGroup?.questions?.length === 0"
+      :no-click-animation="currentGroup?.questions?.length === 0"
+    >
       <v-card>
         <v-card-title class="headline">
-          Answer Questions for {{ currentGroup?.name }}
+          {{
+            currentGroup?.questions?.length === 0
+              ? 'Add First Question (Required)'
+              : 'Add Question'
+          }}
         </v-card-title>
         <v-card-text>
-          <form @submit.prevent="saveAnswers">
-            <div v-for="question in currentGroup?.questions" :key="question.id" class="mb-4">
-              <h3 class="subtitle-1 mb-2">{{ question.question }}</h3>
-              
-              <!-- String type questions with options -->
-              <v-radio-group
-                v-if="question.data_type === 'string'"
-                v-model="questionAnswers[question.id]"
-                :mandatory="false"
-              >
-                <v-radio
-                  v-for="option in question.options"
-                  :key="option"
-                  :label="option"
-                  :value="option"
-                ></v-radio>
-              </v-radio-group>
-              
-              <!-- Integer type questions with options -->
-              <v-radio-group
-                v-else-if="question.data_type === 'int'"
-                v-model="questionAnswers[question.id]"
-                :mandatory="false"
-              >
-                <v-radio
-                  v-for="option in question.options"
-                  :key="option"
-                  :label="option"
-                  :value="option"
-                ></v-radio>
-              </v-radio-group>
-              
-              <!-- Boolean type questions (Yes/No) -->
-              <v-radio-group
-                v-else-if="question.data_type === 'boolean'"
-                v-model="questionAnswers[question.id]"
-                :mandatory="false"
-              >
-                <v-radio
-                  label="Yes"
-                  :value="true"
-                ></v-radio>
-                <v-radio
-                  label="No"
-                  :value="false"
-                ></v-radio>
-              </v-radio-group>
+          <!-- Campo pergunta obrigatório -->
+          <v-text-field
+            v-model="newQuestion.question"
+            label="Question Text *"
+            :rules="[v => !!v || 'Question text is required']"
+            required
+            :error-messages="questionFormErrors.question ? 'Question text is required' : ''"
+          />
+
+          <!-- Campo data_type obrigatório -->
+          <v-select
+            v-model="newQuestion.data_type"
+            :items="dataTypes"
+            label="Data Type *"
+            :rules="[v => !!v || 'Data type is required']"
+            required
+            :error-messages="questionFormErrors.data_type ? 'Data type is required' : ''"
+            @change="clearOptions"
+          />
+
+          <!-- Opções (string/int) também com regra -->
+          <div
+            v-if="newQuestion.data_type === 'string' ||
+                  newQuestion.data_type === 'int'"
+          >
+            <v-btn
+              small
+              color="primary"
+              @click="newQuestion.options.push('')"
+            >
+              <v-icon small left>mdi-plus</v-icon>
+              Add Option
+            </v-btn>
+            <div v-if="questionFormErrors.options" class="error--text caption mt-1">
+              At least two options are required
             </div>
-          </form>
+            <v-text-field
+              v-for="(opt, i) in newQuestion.options"
+              :key="i"
+              v-model="newQuestion.options[i]"
+              :label="`Option ${i+1} *`"
+              :rules="[
+                v => !!v || 'Option is required',
+                v => validateOptionType(v, newQuestion.data_type) || 
+                     (newQuestion.data_type === 'int' ? 'Must be a number' : 'Must be text')
+              ]"
+              required
+              :error-messages="questionFormErrors.options ? 'Option is required' : ''"
+              class="mt-2"
+              :type="newQuestion.data_type === 'int' ? 'number' : 'text'"
+              @input="validateOption(i)"
+              @keypress="newQuestion.data_type === 'int' ? onlyNumbers($event) : null"
+              @paste="newQuestion.data_type === 'int' ? preventPaste($event) : null"
+            />
+          </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn text @click="closeAnswerDialog">Cancel</v-btn>
-          <v-btn color="success" @click="saveAnswers">Submit Answers</v-btn>
+          <v-btn 
+            v-if="currentGroup?.questions?.length > 0"
+            text 
+            @click="dialogAddQuestion = false"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            text
+            @click="validateAndSaveQuestion"
+          >
+            Save
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
+     
     
-    <!-- Add this dialog after your other dialogs, before the closing </v-card> tag -->
-    <v-dialog v-model="dialogConfirmDelete" max-width="400px">
+
+   
+
+   
+
+   
+
+   
+
+    <!-- Answer Questions Dialog -->
+    <v-dialog 
+      v-model="dialogAnswer" 
+      max-width="600px"
+      :persistent="hasError"
+      :hide-overlay="hasError"
+      :no-click-animation="hasError"
+    >
       <v-card>
-        <v-card-title class="headline">Delete Question</v-card-title>
+        <v-card-title class="headline">Answer Questions for {{ currentGroup?.name }}</v-card-title>
         <v-card-text>
-          Are you sure you want to delete the question 
-          <strong>{{ questionToDelete?.question }}</strong>?
-          This action cannot be undone.
+          <div v-for="q in currentGroup?.questions" :key="q.id" class="mb-4">
+            <h3>{{ q.question }}</h3>
+            <v-radio-group
+              v-model="answers[q.id]"
+              row
+              :disabled="answeredPerspectiveIds.includes(q.id)"
+            >
+              <v-radio
+                v-for="opt in (q.data_type === 'boolean' ? ['Yes','No'] : q.options)"
+                :key="opt"
+                :label="opt"
+                :value="opt"
+              />
+            </v-radio-group>
+          </div>
         </v-card-text>
         <v-card-actions>
-          <v-spacer></v-spacer>
-          <v-btn text @click="dialogConfirmDelete = false">Cancel</v-btn>
-          <v-btn color="error" text @click="deleteQuestion">Delete</v-btn>
+          <v-spacer/>
+          <v-btn text @click="closeAnswerDialog">Cancel</v-btn>
+          <v-btn color="success" text @click="saveAnswers">Submit</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
-    <!-- Add this dialog for viewing responses after your 
-     other dialogs but before the closing </v-card> tag -->
-    <v-dialog v-model="dialogViewResponses" max-width="700px">
+    <!-- Select Example Dialog -->
+    <v-dialog v-model="dialogSelectExample" max-width="500px">
       <v-card>
-        <v-card-title class="headline d-flex align-center">
-          <span>Responses for Question</span>
-          <v-spacer></v-spacer>
-          <v-chip color="primary" class="ml-2">{{ currentQuestion?.question }}</v-chip>
+        <v-card-title class="headline">Select an Example</v-card-title>
+        <v-card-text>
+          <p class="mb-4">Please select an example to answer the questions for:</p>
+          <v-list>
+            <v-list-item
+              v-for="example in examples"
+              :key="example.id"
+              @click="selectExampleAndContinue(example)"
+            >
+              <v-list-item-content>
+                <v-list-item-title>{{ example.text || `Example ${example.id}` }}</v-list-item-title>
+                <v-list-item-subtitle v-if="example.metadata">
+                  {{ example.metadata.description || '' }}
+                </v-list-item-subtitle>
+              </v-list-item-content>
+            </v-list-item>
+          </v-list>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer/>
+          <v-btn text @click="dialogSelectExample = false">Cancel</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Edit Question Dialog -->
+    <v-dialog v-model="dialogEditQuestion" max-width="500px">
+      <v-card>
+        <v-card-title class="headline">
+          Edit Question
         </v-card-title>
-        
-        <v-card-text v-if="loadingResponses">
-          <div class="text-center pa-4">
-            <v-progress-circular indeterminate color="primary"></v-progress-circular>
-            <div class="mt-2">Loading responses...</div>
+        <v-card-text>
+          <v-text-field
+            v-model="editingQuestion.question"
+            label="Question Text *"
+            :rules="[v => !!v || 'Question text is required']"
+            required
+            :error-messages="editFormErrors.question ? 'Question text is required' : ''"
+          />
+
+          <v-select
+            v-model="editingQuestion.data_type"
+            :items="dataTypes"
+            label="Data Type *"
+            :rules="[v => !!v || 'Data type is required']"
+            required
+            :error-messages="editFormErrors.data_type ? 'Data type is required' : ''"
+          />
+
+          <div
+            v-if="editingQuestion.data_type === 'string' ||
+                  editingQuestion.data_type === 'int'"
+          >
+            <v-btn
+              small
+              color="primary"
+              @click="editingQuestion.options.push('')"
+            >
+              <v-icon small left>mdi-plus</v-icon>
+              Add Option
+            </v-btn>
+            <div v-if="editFormErrors.options" class="error--text caption mt-1">
+              At least two options are required
+            </div>
+            <div
+              v-for="(opt, i) in editingQuestion.options"
+              :key="i"
+              class="d-flex align-center mt-2"
+            >
+              <v-text-field
+                v-model="editingQuestion.options[i]"
+                :label="`Option ${i + 1} *`"
+                :rules="[v => !!v || 'Option is required']"
+                :error-messages="editFormErrors.options ? optionsErrorMessage : ''"
+                class="flex-grow-1 mr-2"
+                required
+              />
+              <v-btn fab x-small color="error" dark @click="editingQuestion.options.splice(i, 1)">
+                <v-icon small>mdi-delete</v-icon>
+              </v-btn>
+            </div>
           </div>
         </v-card-text>
-        
-        <v-card-text v-else-if="questionResponses.length === 0" class="text-center pa-4">
-          <v-icon large color="grey lighten-1">mdi-poll-box-outline</v-icon>
-          <div class="mt-2 grey--text">No responses for this question yet</div>
-        </v-card-text>
-        
-        <template v-else>
-          <!-- Chart view for overview -->
-          <v-card-text>
-            <h3 class="subtitle-1 mb-3">Response Summary</h3>
-            <v-simple-table>
-              <template #default>
-                <thead>
-                  <tr>
-                    <th>Answer</th>
-                    <th>Count</th>
-                    <th>Percentage</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="(count, answer) in responseStats" :key="answer">
-                    <td>{{ answer }}</td>
-                    <td>{{ count }}</td>
-                    <td>
-                      {{ Math.round((count / questionResponses.length) * 100) }}%
-                      <v-progress-linear
-                        :value="(count / questionResponses.length) * 100"
-                        height="6"
-                        rounded
-                        color="primary"
-                        class="mt-1"
-                      ></v-progress-linear>
-                    </td>
-                  </tr>
-                </tbody>
-              </template>
-            </v-simple-table>
-          </v-card-text>
-          
-          <!-- Detailed responses -->
-          <v-card-text>
-            <h3 class="subtitle-1 mb-3">Individual Responses</h3>
-            <v-simple-table>
-              <template #default>
-                <thead>
-                  <tr>
-                    <th>User</th>
-                    <th>Response</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="response in questionResponses" :key="response.id || Math.random()">
-                    <td>{{ response.created_by_username || 'Unknown User' }}</td>
-                    <td>{{ response.answer || 'No answer' }}</td>
-                    <td>{{ formatDate(response.created_at) }}</td>
-                  </tr>
-                </tbody>
-              </template>
-            </v-simple-table>
-          </v-card-text>
-        </template>
-        
         <v-card-actions>
-          <v-spacer></v-spacer>
+          <v-spacer />
+          <v-btn text @click="dialogEditQuestion = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            color="primary"
+            text
+            @click="validateAndSaveEdit"
+          >
+            Save
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- View Responses Dialog -->
+    <v-dialog v-model="dialogViewResponses" max-width="800px">
+      <v-card>
+        <v-card-title class="headline">
+          Responses for: {{ viewingQuestion?.question }}
+        </v-card-title>
+        <v-card-text>
+          <v-data-table
+            :headers="responseHeaders"
+            :items="questionResponses"
+            :loading="loadingResponses"
+            class="elevation-1"
+          >
+            <template #[`item.answer`]="{ item }">
+              {{ item.answer }}
+            </template>
+            <template #[`item.created_at`]="{ item }">
+              {{ new Date(item.created_at).toLocaleString() }}
+            </template>
+          </v-data-table>
+
+          <!-- Vote Count Summary -->
+          <v-card class="mt-4" flat>
+            <v-card-title>Vote Summary</v-card-title>
+            <v-card-text>
+              <v-list>
+                <v-list-item v-for="(count, answer) in voteCounts" :key="answer">
+                  <v-list-item-content>
+                    <v-list-item-title>{{ answer }}</v-list-item-title>
+                    <v-list-item-subtitle>
+                      Votes: {{ count }} ({{ calculatePercentage(count) }}%)
+                    </v-list-item-subtitle>
+                  </v-list-item-content>
+                </v-list-item>
+              </v-list>
+            </v-card-text>
+          </v-card>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
           <v-btn text @click="dialogViewResponses = false">Close</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
+    <!-- Delete Group Dialog -->
+    <v-dialog v-model="dialogDeleteGroup" max-width="400px">
+      <v-card>
+        <v-card-title class="headline">Delete Perspective Group</v-card-title>
+        <v-card-text>
+          <div v-if="groupHasResponses" 
+            class="red--text text--darken-1 font-weight-bold">
+            Cannot delete group because it has responses.
+            Please delete all responses first.
+          </div>
+          <template v-else>
+            Are you sure you want to delete the perspective group:
+            <div class="mt-2 font-weight-bold">{{ deletingGroup?.name }}</div>
+            <div class="red--text text--darken-1 font-weight-bold">This action cannot be 
+              undone and will delete all associated questions!</div>
+          </template>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="dialogDeleteGroup = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            color="error"
+            text
+            :disabled="groupHasResponses"
+            @click="deleteGroup"
+          >
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Delete Question Dialog -->
+    <v-dialog v-model="dialogDeleteQuestion" max-width="400px">
+      <v-card>
+        <v-card-title class="headline">Delete Question</v-card-title>
+        <v-card-text>
+          Are you sure you want to delete the question:
+          <div class="mt-2 font-weight-bold">{{ deletingQuestion?.question }}</div>
+          <div class="red--text text--darken-1 font-weight-bold">This action cannot be 
+            undone and will delete all associated answers!</div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="dialogDeleteQuestion = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            color="error"
+            text
+            @click="deleteQuestion"
+          >
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- Snackbars -->
-    <v-snackbar v-model="snackbar" timeout="3000" top color="success">
+    <v-snackbar v-model="snackbar" top color="success">
       {{ snackbarMessage }}
-      <template #action="{ attrs }">
-        <v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn>
-      </template>
+      <v-btn text @click="snackbar = false">Close</v-btn>
     </v-snackbar>
-    
-    <v-snackbar v-model="snackbarError" timeout="3000" top color="error">
+    <v-snackbar v-model="snackbarError" top color="error">
       {{ snackbarErrorMessage }}
-      <template #action="{ attrs }">
-        <v-btn text v-bind="attrs" @click="snackbarError = false">Close</v-btn>
-      </template>
+      <v-btn text @click="snackbarError = false">Close</v-btn>
     </v-snackbar>
+
+    <!-- Error message as pop-up central superior -->
+    <transition name="fade">
+      <div v-if="errorMessage" class="error-message">
+        <v-icon small class="mr-2" color="error">mdi-alert-circle</v-icon>
+        {{ errorMessage }}
+      </div>
+    </transition>
   </v-card>
 </template>
 
 <script>
+import { usePerspectiveApplicationService } from '@/services/application/perspective/perspectiveApplicationService'
+
 export default {
   layout: 'project',
   middleware: ['check-auth', 'auth', 'setCurrentProject'],
 
+  validate({ params }) {
+    return /^\d+$/.test(params.id)
+  },
+
   data() {
     return {
+      // Create‐group
       dialogCreateGroup: false,
-      dialogCreateQuestion: false,
-      dialogAnswerQuestions: false,
+      editedGroup: { name:'', description:'' },
+      newGroupQuestion: { question:'', data_type:'string', options:[] },
+      groupFormErrors: {
+        name: false,
+        question: false,
+        data_type: false,
+        options: false
+      },
+
+      // Listagem
+      perspectiveGroups: [],
+      expandedPanel: null,
+      currentGroup: null,
+
+      // Add Question
+      dialogAddQuestion: false,
+      questionFormErrors: {
+        question: false,
+        data_type: false,
+        options: false
+      },
+
+      // Edit Question
+      dialogEditQuestion: false,
+      editingQuestion: { question:'', data_type:'string', options:[] },
+      editFormErrors: {
+        question: false,
+        data_type: false,
+        options: false
+      },
+
+      // Answer
+      dialogAnswer: false,
+      newQuestion: { question:'', data_type:'string', options:[] },
+      answers: {},
+
+      // Data Types
+      dataTypes: [
+        { text: 'Text (options)', value: 'string' },
+        { text: 'Number (options)', value: 'int' },
+        { text: 'Yes/No', value: 'boolean' }
+      ],
+
+      // Snackbars
       snackbar: false,
       snackbarMessage: '',
       snackbarError: false,
       snackbarErrorMessage: '',
       showErrors: false,
-      currentGroup: null,
-      perspectiveGroups: [],
       questionAnswers: {},
-      
-      editedGroup: {
-        name: '',
-        description: ''
-      },
-      
-      editedQuestion: {
-        question: '',
-        data_type: 'string',
-        options: []
-      },
 
-      dataTypes: [
-        { text: 'Text (with options)', value: 'string' },
-        { text: 'Number (with options)', value: 'int' },
-        { text: 'Yes/No', value: 'boolean' }
-      ],
-
-      dialogConfirmDelete: false,
-      questionToDelete: null,
-
-      // Development mode toggle
-      devMode: false, // Set to false when deploying
-      userRole: 'admin', // 'admin', 'annotator', 'viewer'
-
-      userPermissions: null,
-      loadingPermissions: false,
-
-      // Add these to your existing data properties
+      // View Responses
       dialogViewResponses: false,
-      currentQuestion: null,
+      viewingQuestion: null,
       questionResponses: [],
       loadingResponses: false,
 
-      knownUsers: []
+      responseHeaders: [
+        { text: 'Answer', value: 'answer' },
+        { text: 'Submitted At', value: 'created_at' }
+      ],
+      voteCounts: {},
+
+      knownUsers: [],
+
+      // Delete Group
+      dialogDeleteGroup: false,
+      deletingGroup: null,
+      groupHasResponses: false,
+
+      // Delete Question
+      dialogDeleteQuestion: false,
+      deletingQuestion: null,
+      deletingQuestionGroup: null,
+
+      examples: [],
+      selectedExample: null,
+      dialogSelectExample: false,
+      optionsErrorMessage: 'Option is required',
+
+      // Existing answers by current user
+      answeredPerspectives: {},
+      answeredPerspectiveIds: [],
+
+      errorMessage: '',
+      hasError: false,
+
+      sortConfig: {},
     }
   },
 
@@ -535,277 +664,84 @@ export default {
     projectId() {
       return this.$route.params.id
     },
-    
-    // Computed property to check if we have groups
     hasGroups() {
-      return this.perspectiveGroups && this.perspectiveGroups.length > 0
+      return this.perspectiveGroups.length > 0
     },
     
-    // Computed property to filter out null groups
     validGroups() {
       return this.perspectiveGroups.filter(group => !!group)
     },
 
-    // Add this to your computed properties
     isAdmin() {
-  // For development mode, use the role selector
-  if (this.devMode) {
-    return this.userRole === 'admin'
-  }
-  
-  // Log what we're checking
-  console.log('Checking admin status with permissions:', this.userPermissions)
-  
-  // Use the permissions data from the API
-  return this.userPermissions?.isAdmin === true
-},
-
-    // Add this computed property for response statistics
-    responseStats() {
-      const stats = {};
-      
-      if (!this.questionResponses.length) return stats;
-      
-      // Count occurrences of each answer
-      this.questionResponses.forEach(response => {
-        const answer = response.answer;
-        if (!stats[answer]) {
-          stats[answer] = 0;
-        }
-        stats[answer]++;
-      });
-      
-      return stats;
+      const currentProject = this.$store.getters['projects/currentProject']
+      return currentProject?.role === 'admin' || currentProject?.role === 'project_admin'
     },
+
+    responseStats() {
+      return {};
+    }
+  },
+
+  watch: {
+    errorMessage(newVal) {
+      if (newVal) {
+        this.dialogViewResponses = false;
+      }
+    },
+    
+    hasError(newVal) {
+      if (newVal) {
+        this.dialogViewResponses = false;
+      }
+    }
   },
 
   mounted() {
-    this.fetchPerspectiveGroups();
-    this.fetchUserPermissions();
+    this.fetchPerspectiveGroups()
   },
 
   methods: {
     async fetchPerspectiveGroups() {
       try {
-        // Use the Vue 2 service pattern
-        const response = await this.$services.perspective.listPerspectiveGroups(this.projectId)
-        console.log('API response:', response) // Debug response
-        this.perspectiveGroups = response.results || response || []
-      } catch (err) {
-        console.error('Error fetching perspective groups', err)
-        this.snackbarErrorMessage = 'Failed to connect to the database, try again later'
-        this.snackbarError = true
-      }
-    },
-    
-    // Helper method to check if a group has questions
-    hasQuestions(group) {
-      return group && group.questions && group.questions.length > 0
-    },
+        const res = await this.$services.perspective.listPerspectiveGroups(this.projectId)
+        this.perspectiveGroups = res.results || res.data?.results || []
 
-    openAddQuestionDialog(group) {
-      console.log("Opening question dialog, isAdmin:", this.isAdmin);
-      
-      // Check if user is admin before allowing to add questions
-      if (!this.isAdmin) {
-        this.snackbarErrorMessage = 'Only administrators can add questions'
-        this.snackbarError = true
-        return
-      }
-      
-      this.currentGroup = group
-      this.editedQuestion = {
-        question: '',
-        data_type: 'string',
-        options: []
-      }
-      this.dialogCreateQuestion = true
-    },
-
-    closeGroupDialog() {
-      this.dialogCreateGroup = false
-      this.showErrors = false
-      this.editedGroup = {
-        name: '',
-        description: ''
-      }
-    },
-
-    closeQuestionDialog() {
-      this.dialogCreateQuestion = false
-      this.showErrors = false
-      this.currentGroup = null
-      this.editedQuestion = {
-        question: '',
-        data_type: 'string',
-        options: []
-      }
-    },
-
-    closeAnswerDialog() {
-      this.dialogAnswerQuestions = false
-      this.currentGroup = null
-      this.questionAnswers = {}
-    },
-
-    async saveGroup() {
-      this.showErrors = true
-      if (!this.editedGroup.name) {
-        return
-      }
-
-      try {
-        await this.$services.perspective.createPerspectiveGroup(this.projectId, this.editedGroup)
-        
-        this.snackbarMessage = 'Perspective group created successfully!'
-        this.snackbar = true
-        this.closeGroupDialog()
-        this.fetchPerspectiveGroups()
+        // After fetching groups, also fetch existing answers for the current user
+        await this.fetchUserPerspectiveAnswers()
       } catch (e) {
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Error creating perspective group'
+        console.error('Erro fetching groups', e)
+        this.snackbarErrorMessage = 'Erro ao carregar grupos'
         this.snackbarError = true
       }
     },
 
-    async saveQuestion() {
-      this.showErrors = true
-      if (!this.editedQuestion.question || !this.editedQuestion.data_type) {
-        return
-      }
-
-      // Validate options for string and int types
-      if ((this.editedQuestion.data_type === 'string' || this.editedQuestion.data_type === 'int') 
-          && this.editedQuestion.options.length === 0) {
-        return
-      }
-      
-      // Filter out empty options
-      const filteredOptions = this.editedQuestion.options.filter(opt => opt.trim() !== '')
-      
-      const payload = { 
-        ...this.editedQuestion,
-        options: filteredOptions,
-        group: this.currentGroup.id,
-        project: this.projectId,
-        name: this.editedQuestion.question 
-      }
-
+    async fetchUserPerspectiveAnswers() {
+      /*
+       * Retrieves all perspective answers submitted by the current user so we
+       * can disable questions that were already answered.
+       */
       try {
-        await this.$services.perspective.createPerspective(this.projectId, payload)
-        
-        this.snackbarMessage = 'Question added successfully!'
-        this.snackbar = true
-        this.closeQuestionDialog()
-        this.fetchPerspectiveGroups()
-      } catch (e) {
-        console.error('Error adding question:', e.response?.data || e)
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Couldnt connect to the database, try again later'
-        this.snackbarError = true
-      }
-    },
-    
-    async saveAnswers() {
-      try {
-        const answersToSave = []
-        
-        // Format answers for API submission
-        for (const [questionId, answer] of Object.entries(this.questionAnswers)) {
-          // Skip empty answers
-          if (answer === null || answer === '') continue
-          
-          answersToSave.push({
-            perspective: parseInt(questionId), // Convert to integer
-            project: parseInt(this.projectId), // Convert to integer
-            answer: String(answer)  // Convert all answers to strings for storage
+        const service = usePerspectiveApplicationService()
+        const res = await service.listPerspectiveAnswers(this.projectId)
+        let results = []
+        if (Array.isArray(res)) {
+          results = res
+        } else if (res?.results) {
+          results = res.results
+        } else if (res?.data?.results) {
+          results = res.data.results
+        }
+
+        this.answeredPerspectives = {}
+        const myId = this.$store.getters['auth/getUserId']
+        results
+          .filter(ans => ans.created_by === myId)
+          .forEach(ans => {
+            this.answeredPerspectives[ans.perspective] = ans.answer
           })
-        }
-        
-        // Only proceed if we have answers
-        if (answersToSave.length === 0) {
-          this.snackbarErrorMessage = 'Please answer at least one question'
-          this.snackbarError = true
-          return
-        }
-        
-        // Save each answer
-        const savePromises = answersToSave.map(answer => 
-          this.$services.perspective.createPerspectiveAnswer(this.projectId, answer)
-        )
-        
-        await Promise.all(savePromises)
-        
-        this.snackbarMessage = 'Answers submitted successfully!'
-        this.snackbar = true
-        this.closeAnswerDialog()
-      } catch (e) {
-        console.error('Error saving answers:', e.response?.data || e)
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Error saving answers'
-        this.snackbarError = true
-      }
-    },
-
-    showQuestionDetails(question) {
-      // Implement this method if needed
-      console.log('Question details:', question)
-    },
-
-    addOption() {
-      this.editedQuestion.options.push('')
-    },
-
-    removeOption(index) {
-      this.editedQuestion.options.splice(index, 1)
-    },
-
-    openAnswerQuestionsDialog(group) {
-      this.currentGroup = group
-      this.questionAnswers = {}  // Reset the answers
-      
-      // Initialize answers for existing questions
-      if (group && group.questions) {
-        group.questions.forEach(question => {
-          // Default values by question type
-          if (question.data_type === 'boolean') {
-            this.questionAnswers[question.id] = null
-          } else {
-            this.questionAnswers[question.id] = ''
-          }
-        })
-      }
-      
-      this.dialogAnswerQuestions = true
-    },
-
-    confirmDeleteQuestion(question) {
-      // Check if user is admin before allowing to delete questions
-      if (!this.isAdmin) {
-        this.snackbarErrorMessage = 'Only administrators can delete questions'
-        this.snackbarError = true
-        return
-      }
-      
-      this.questionToDelete = question
-      this.dialogConfirmDelete = true
-    },
-
-    async deleteQuestion() {
-      if (!this.questionToDelete) return
-
-      try {
-        await this.$services.perspective.deletePerspective(
-          this.projectId, 
-          this.questionToDelete.id
-        )
-        
-        this.snackbarMessage = 'Question deleted successfully!'
-        this.snackbar = true
-        this.dialogConfirmDelete = false
-        this.questionToDelete = null
-        this.fetchPerspectiveGroups() // Refresh the list
-      } catch (e) {
-        console.error('Error deleting question:', e.response?.data || e)
-        this.snackbarErrorMessage = e.response?.data?.detail || 'Error deleting question'
-        this.snackbarError = true
+        this.answeredPerspectiveIds = Object.keys(this.answeredPerspectives).map(id => parseInt(id))
+      } catch (err) {
+        console.error('Erro ao obter respostas existentes', err)
       }
     },
 
@@ -818,69 +754,422 @@ export default {
       this.dialogCreateGroup = true
     },
 
-    async fetchUserPermissions() {
-      try {
-        this.loadingPermissions = true
-        // Call your API to get user permissions for this project
-        const response = await this.$axios.get(`/v1/projects/${this.projectId}/my-permissions/`)
-        console.log('User permissions response:', response.data)
-        
-        // Save the permissions data
-        this.userPermissions = response.data
-      } catch (error) {
-        console.error('Error fetching user permissions:', error)
-        this.snackbarErrorMessage = 'Could not verify your permissions'
-        this.snackbarError = true
-      } finally {
-        this.loadingPermissions = false
+    closeGroupDialog() {
+      this.dialogCreateGroup = false
+      this.editedGroup = { name:'', description:'' }
+      this.newGroupQuestion = { question:'', data_type:'string', options:[] }
+      this.groupFormErrors = {
+        name: false,
+        question: false,
+        data_type: false,
+        options: false
       }
     },
 
-    // Show all responses for a question
-    async showQuestionResponses(question) {
-      if (!this.isAdmin) {
-        this.snackbarErrorMessage = 'Only administrators can view all responses';
-        this.snackbarError = true;
+    async validateAndSaveGroup() {
+      const g = this.editedGroup;
+      const q = this.newGroupQuestion;
+      
+      this.groupFormErrors = {
+        name: !g.name,
+        question: !q.question,
+        data_type: !q.data_type,
+        options: (q.data_type === 'string' || q.data_type === 'int') && q.options.length < 2
+      };
+
+      if (Object.values(this.groupFormErrors).some(Boolean)) {
         return;
       }
+
+      try {
+        const { id: groupId } = 
+        await this.$services.perspective.createPerspectiveGroup(this.projectId, {
+          ...g,
+          initial_question: {
+            question: q.question,
+            data_type: q.data_type,
+            options: q.options.filter(o => o.trim())
+          }
+        });
+        
+        this.snackbarMessage = 'Group and question created successfully!';
+        this.snackbar = true;
+        this.closeGroupDialog();
+        await this.fetchPerspectiveGroups();
+        this.expandedPanel = this.perspectiveGroups.findIndex(gr => gr.id === groupId);
+      } catch (err) {
+        console.error(err);
+        if (!err.response || (err.response.status && err.response.status >= 500)) {
+          this.snackbarErrorMessage = 'Database unavailable at the moment, please try again later.';
+        } else {
+          this.snackbarErrorMessage = err.response?.data?.detail || 'Error creating group';
+        }
+        this.snackbarError = true;
+      }
+    },
+
+    async saveGroup() {
+      await this.validateAndSaveGroup();
+    },
+
+    openAddQuestionDialog(group) {
+      this.currentGroup = group
+      this.newQuestion = { question:'', data_type:'string', options:[] }
+      this.questionFormErrors = {
+        question: false,
+        data_type: false,
+        options: false
+      }
+      this.dialogAddQuestion = true
+    },
+
+    onlyNumbers(event) {
+      const keyCode = event.keyCode || event.which;
+      const keyValue = String.fromCharCode(keyCode);
+      // Permite apenas números e teclas de controle (backspace, delete, etc)
+      if (!/^\d$/.test(keyValue) && 
+          keyCode !== 8 && // backspace
+          keyCode !== 46 && // delete
+          keyCode !== 37 && // left arrow
+          keyCode !== 39) { // right arrow
+        event.preventDefault();
+      }
+    },
+
+    preventPaste(event) {
+      if (this.newQuestion.data_type === 'int') {
+        event.preventDefault();
+        const pastedText = (event.clipboardData || window.clipboardData).getData('text');
+        if (!/^\d+$/.test(pastedText)) {
+          this.snackbarErrorMessage = 'Only numbers are allowed';
+          this.snackbarError = true;
+        } else {
+          this.newQuestion.options[event.target.dataset.index] = pastedText;
+        }
+      }
+    },
+
+    validateOptionType(value, type) {
+      if (!value) return true;
+      if (type === 'int') {
+        return /^\d+$/.test(value) && Number.isInteger(Number(value));
+      }
+      return true; // Para string, aceita qualquer texto
+    },
+
+    validateOption(index) {
+      const value = this.newQuestion.options[index];
+      if (this.newQuestion.data_type === 'int') {
+        // Remove qualquer caractere não numérico
+        this.newQuestion.options[index] = value.replace(/\D/g, '');
+      }
+    },
+
+    async validateAndSaveQuestion() {
+      const q = this.newQuestion;
+      this.questionFormErrors = {
+        question: !q.question,
+        data_type: !q.data_type,
+        options: (q.data_type === 'string' || q.data_type === 'int') && q.options.length < 2
+      };
+
+      if (Object.values(this.questionFormErrors).some(Boolean)) {
+        return;
+      }
+
+      try {
+        const payload = {
+          project: this.projectId,
+          group: this.currentGroup.id,
+          name: q.question,
+          question: q.question,
+          data_type: q.data_type,
+          options: q.options.filter(o => o.trim())
+        };
+
+        await this.$services.perspective.createPerspective(this.projectId, payload);
+        this.dialogAddQuestion = false;
+        await this.fetchPerspectiveGroups();
+        this.snackbarMessage = 'Question added successfully';
+        this.snackbar = true;
+      } catch (e) {
+        console.error(e);
+        if (!e.response || (e.response.status && e.response.status >= 500)) {
+          this.snackbarErrorMessage = 'Database unavailable at the moment, please try again later.';
+        } else {
+          this.snackbarErrorMessage = e.response?.data?.detail || 'Error adding question';
+        }
+        this.snackbarError = true;
+      }
+    },
+
+    async saveQuestion() {
+      await this.validateAndSaveQuestion();
+    },
+
+    async openAnswerDialog(group) {
+      // Ensure we have the latest answered data
+      await this.fetchUserPerspectiveAnswers()
+
+      this.currentGroup = group
+
+      // Initialize answers object
+      this.answers = {}
+
+      // Determine unanswered questions
+      const unanswered = this.currentGroup.questions.filter(
+        q => !this.answeredPerspectiveIds.includes(q.id)
+      )
+
+      if (unanswered.length === 0) {
+        // All questions already answered
+        this.snackbarErrorMessage = 'Já respondeu a todas as questões deste grupo.'
+        this.snackbarError = true
+        return
+      }
+
+      // Prefill existing answers and set null for unanswered
+      this.currentGroup.questions.forEach(q => {
+        if (this.answeredPerspectiveIds.includes(q.id)) {
+          this.answers[q.id] = this.answeredPerspectives[q.id]
+        } else {
+          this.answers[q.id] = null
+        }
+      })
+
+      // Show dialog
+      this.dialogAnswer = true
+    },
+
+    selectExampleAndContinue(example) {
+      this.selectedExample = example
+      this.dialogSelectExample = false
       
-      this.currentQuestion = question;
-      this.dialogViewResponses = true;
+      // Ensure answers object respects already answered questions
+      this.answers = {}
+      this.currentGroup.questions.forEach(q => {
+        if (this.answeredPerspectiveIds.includes(q.id)) {
+          this.answers[q.id] = this.answeredPerspectives[q.id]
+        } else {
+          this.answers[q.id] = null
+        }
+      })
+      this.dialogAnswer = true
+    },
+
+    closeAnswerDialog() {
+      this.dialogAnswer = false
+      this.hasError = false
+      this.answers = {}
+      this.selectedExample = null
+    },
+
+    async saveAnswers() {
+      this.hasError = false
+      try {
+        const answersToSave = []
+        
+        console.log('Starting saveAnswers process...')
+        console.log('Current answers:', this.answers)
+        console.log('Current project ID:', this.projectId)
+        
+        // Se não houver exemplo selecionado, tentamos obter o exemplo atual
+        if (!this.selectedExample) {
+          try {
+            console.log('Attempting to get current example...')
+            this.selectedExample = await this.$services.example.getCurrentExample(this.projectId)
+            console.log('Current example response:', this.selectedExample)
+          } catch (error) {
+            console.error('Error getting current example:', error)
+            // Continua mesmo sem exemplo, pois não é obrigatório
+          }
+        }
+        
+        for (const [questionId, answer] of Object.entries(this.answers)) {
+          // Ignore questions the user had already answered previously or left blank
+          if (this.answeredPerspectiveIds.includes(parseInt(questionId))) {
+            continue
+          }
+
+          if (answer === null || answer === '') {
+            console.log('Skipping empty answer for question:', questionId)
+            continue
+          }
+          
+          const answerData = {
+            perspective: parseInt(questionId),
+            project: parseInt(this.projectId),
+            answer: String(answer)
+          }
+
+          // Adiciona o exemplo apenas se estiver disponível
+          if (this.selectedExample && this.selectedExample.id) {
+            answerData.example = this.selectedExample.id
+          }
+          
+          console.log('Preparing answer data:', answerData)
+          answersToSave.push(answerData)
+        }
+        
+        if (answersToSave.length === 0) {
+          console.error('No valid answers to save')
+          this.snackbarErrorMessage = 'Please answer at least one question'
+          this.snackbarError = true
+          this.hasError = true
+          return
+        }
+        
+        console.log('Attempting to save answers:', answersToSave)
+        
+        const service = usePerspectiveApplicationService()
+        for (const answer of answersToSave) {
+          try {
+            console.log('Submitting answer:', answer)
+            const response = await service.createPerspectiveAnswer(this.projectId, answer)
+            console.log('Answer submission response:', response)
+          } catch (answerError) {
+            console.error('Error submitting individual answer:', answerError)
+            console.error('Error details:', {
+              message: answerError.message,
+              response: answerError.response?.data,
+              status: answerError.response?.status
+            })
+            throw answerError
+          }
+        }
+        
+        this.snackbarMessage = 'Answers submitted successfully!'
+        this.snackbar = true
+        this.closeAnswerDialog()
+        await this.fetchUserPerspectiveAnswers()
+      } catch (e) {
+        console.error('Error saving answers:', e)
+        console.error('Error details:', {
+          message: e.message,
+          response: e.response?.data,
+          status: e.response?.status
+        })
+        this.snackbarErrorMessage = e.response?.data?.detail || e.message || 'Error saving answers'
+        this.snackbarError = true
+        this.hasError = true
+      }
+    },
+
+    calculateVoteCounts(responses) {
+      const counts = {}
+      responses.forEach(response => {
+        const answer = response.answer
+        counts[answer] = (counts[answer] || 0) + 1
+      })
+      return counts
+    },
+
+    calculatePercentage(count) {
+      const total = Object.values(this.voteCounts).reduce((a, b) => a + b, 0)
+      return total > 0 ? Math.round((count / total) * 100) : 0
+    },
+
+    async showQuestionResponses(question) {
+      this.viewingQuestion = question;
       this.loadingResponses = true;
-      this.questionResponses = [];
       
       try {
-        // Change this line to use the correct method
-        const response = await this.$services.perspective.listPerspectiveAnswersByQuestion(
-          this.projectId, 
+        const service = usePerspectiveApplicationService()
+        const response = await service.listPerspectiveAnswersByQuestion(
+          this.projectId,
           question.id
         );
-        this.questionResponses = response.results || response || [];
-        console.log('Question responses:', this.questionResponses);
+        this.questionResponses = response.results || [];
+        this.voteCounts = this.calculateVoteCounts(this.questionResponses);
+        
+        // Only open dialog if no errors occurred
+        if (!this.errorMessage && !this.hasError) {
+          this.dialogViewResponses = true;
+        }
       } catch (error) {
-        console.error('Error loading responses:', error);
-        this.snackbarErrorMessage = 'Failed to connect to the database, try again later';
-        this.snackbarError = true;
+        console.error('Error fetching responses:', error);
+        this.errorMessage = 'Database unavailable at the moment, please try again later.';
+        this.hasError = true;
       } finally {
         this.loadingResponses = false;
       }
     },
 
-    // Add this method for formatting dates
-    formatDate(dateString) {
-      if (!dateString) return 'N/A';
-      
-      try {
-        const date = new Date(dateString);
-        // Check if date is valid
-        if (isNaN(date.getTime())) {
-          return 'Invalid Date';
-        }
-        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-      } catch (error) {
-        console.error('Error formatting date:', error);
-        return 'N/A';
+    openEditQuestionDialog(_group, question) {
+      this.currentGroup = _group
+      this.editingQuestion = { ...question }
+      this.editFormErrors = {
+        question: false,
+        data_type: false,
+        options: false
       }
+      this.dialogEditQuestion = true
+    },
+
+    async validateAndSaveEdit() {
+      const q = this.editingQuestion
+      this.editFormErrors = {
+        question: !q.question,
+        data_type: !q.data_type,
+        options: (q.data_type === 'string' || q.data_type === 'int') && q.options.length < 2
+      }
+
+      // reset message
+      this.optionsErrorMessage = 'Option is required'
+
+      const isNumeric = v => /^-?\d+(\.\d+)?$/.test(v.trim())
+      if (q.data_type === 'int') {
+        // Ensure every option numeric
+        if (q.options.some(opt => !isNumeric(opt))) {
+          this.editFormErrors.options = true
+          this.optionsErrorMessage = 'All options must be numeric for Number type'
+        }
+      }
+      if (q.data_type === 'string') {
+        // Prevent options that are purely numeric when type is text
+        if (q.options.some(opt => isNumeric(opt))) {
+          this.editFormErrors.options = true
+          this.optionsErrorMessage = 'Options cannot be purely numeric for Text type'
+        }
+      }
+
+      if (Object.values(this.editFormErrors).some(Boolean)) {
+        return
+      }
+
+      try {
+        await this.$services.perspective.updatePerspective(
+          this.projectId,
+          q.id,
+          {
+            project: this.projectId,
+            group: this.currentGroup.id,
+            name: q.question,
+            question: q.question,
+            data_type: q.data_type,
+            options: q.options.filter(o => o.trim())
+          }
+        )
+        this.dialogEditQuestion = false
+        await this.fetchPerspectiveGroups()
+        this.snackbarMessage = 'Question updated successfully'
+        this.snackbar = true
+      } catch (e) {
+        if (!e.response || (e.response.status && e.response.status >= 500)) {
+          this.snackbarErrorMessage = 'Database unavailable at the moment, please try again later.';
+        } else if (e.response.status === 400 && e.response.data?.question) {
+          // Erro de validação: nome da questão duplicado
+          this.snackbarErrorMessage = 'esse nome da questao ja esta a ser usado';
+        } else {
+          this.snackbarErrorMessage = e.response?.data?.detail || 'Error updating question';
+        }
+        this.snackbarError = true
+      }
+    },
+
+    clearOptions() {
+      // Limpa as opções quando muda o tipo
+      this.newQuestion.options = [];
     },
 
     async fetchBasicUserInfo() {
@@ -929,18 +1218,207 @@ export default {
 
     // Update the openComparisonDialog method to fetch user info
     async openComparisonDialog(params) {
-      this.selectedDocumentId = params.documentId;
-      this.comparisonUsers = {
-        user1: params.user1 || this.$store.getters.getUserId,
-        user2: params.user2
-      };
+      try {
+        this.selectedDocumentId = params.documentId;
+        this.comparisonUsers = {
+          user1: params.user1 || this.$store.getters.getUserId,
+          user2: params.user2
+        };
+        
+        // Try to fetch user info before showing the dialog
+        await this.fetchBasicUserInfo();
+        
+        // Show the dialog
+        this.dialogCompare = true;
+      } catch (error) {
+        console.error('Error opening comparison dialog:', error);
+        this.errorMessage = 'Database unavailable at the moment, please try again later.';
+        this.hasError = true;
+        this.dialogCompare = false; // Ensure dialog doesn't open on error
+      }
+    },
+
+    async hasGroupResponses(group) {
+      if (!group) return false;
       
-      // Try to fetch user info before showing the dialog
-      await this.fetchBasicUserInfo();
+      try {
+        // Check each question in the group for responses
+        for (const question of group.questions) {
+          const service = usePerspectiveApplicationService();
+          const response = await service.listPerspectiveAnswersByQuestion(
+            this.projectId,
+            question.id
+          );
+          if (response.results && response.results.length > 0) {
+            return true;
+          }
+        }
+        return false;
+      } catch (error) {
+        console.error('Error checking group responses:', error);
+        return true; // If there's an error, assume there are responses to be safe
+      }
+    },
+
+    async openDeleteGroupDialog(group) {
+      this.deletingGroup = group;
+      this.groupHasResponses = await this.hasGroupResponses(group);
       
-      // Now show the dialog
-      this.dialogCompare = true;
-    }
+      if (this.groupHasResponses) {
+        this.snackbarErrorMessage = 'Cannot delete group because it has responses. Please delete all responses first.';
+        this.snackbarError = true;
+        return;
+      }
+      
+      this.dialogDeleteGroup = true;
+    },
+
+    async deleteGroup() {
+      if (!this.deletingGroup) return;
+
+      // Double check if group has responses before deleting
+      const hasResponses = await this.hasGroupResponses(this.deletingGroup);
+      if (hasResponses) {
+        this.snackbarErrorMessage = 'Cannot delete group because it has responses. Please delete all responses first.';
+        this.snackbarError = true;
+        this.dialogDeleteGroup = false;
+        return;
+      }
+
+      try {
+        const service = usePerspectiveApplicationService();
+        await service.deletePerspectiveGroup(
+          this.projectId,
+          this.deletingGroup.id
+        );
+        this.dialogDeleteGroup = false;
+        await this.fetchPerspectiveGroups();
+        this.snackbarMessage = 'Perspective group deleted successfully';
+        this.snackbar = true;
+      } catch (e) {
+        console.error('Error deleting group:', e);
+        console.error('Error details:', {
+          message: e.message,
+          response: e.response?.data,
+          status: e.response?.status
+        });
+        this.snackbarErrorMessage = e.response?.data?.detail || e.message || 'Error deleting perspective group';
+        this.snackbarError = true;
+      }
+    },
+
+    openDeleteQuestionDialog(group, question) {
+      this.deletingQuestion = question;
+      this.deletingQuestionGroup = group;
+      this.dialogDeleteQuestion = true;
+    },
+
+    async deleteQuestion() {
+      if (!this.deletingQuestion) return;
+
+      try {
+        await this.$services.perspective.deletePerspective(
+          this.projectId,
+          this.deletingQuestion.id
+        );
+        this.dialogDeleteQuestion = false;
+        await this.fetchPerspectiveGroups();
+        this.snackbarMessage = 'Question deleted successfully';
+        this.snackbar = true;
+      } catch (e) {
+        console.error(e);
+        this.snackbarErrorMessage = e.response?.data?.detail || 'Error deleting question';
+        this.snackbarError = true;
+      }
+    },
+
+    sortQuestions(group, column) {
+      if (!this.sortConfig[group.id]) {
+        this.sortConfig[group.id] = {
+          column: 'question',
+          direction: 'asc'
+        }
+      }
+
+      // If clicking the same column, toggle direction
+      if (this.sortConfig[group.id].column === column) {
+        this.sortConfig[group.id].direction = 
+          this.sortConfig[group.id].direction === 'asc' ? 'desc' : 'asc'
+      } else {
+        // If clicking a new column, set it as the sort column
+        this.sortConfig[group.id] = {
+          column,
+          direction: 'asc'
+        }
+      }
+
+      // Sort the questions
+      group.questions.sort((a, b) => {
+        const aValue = a[column]
+        const bValue = b[column]
+        
+        if (this.sortConfig[group.id].direction === 'asc') {
+          return aValue.localeCompare(bValue)
+        } else {
+          return bValue.localeCompare(aValue)
+        }
+      })
+    },
+
+    getSortIcon(group, column) {
+      if (!this.sortConfig[group.id] || this.sortConfig[group.id].column !== column) {
+        return 'mdi-sort'
+      }
+      return this.sortConfig[group.id].direction === 'asc' 
+        ? 'mdi-sort-ascending' 
+        : 'mdi-sort-descending'
+    },
   }
 }
 </script>
+
+<style scoped>
+/* os teus estilos continuam aqui */
+.success-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  background-color: #e6f4ea;
+  color: #2e7d32;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.4s ease;
+}
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.error-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  background-color: #fdecea;
+  color: #b71c1c;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+</style>

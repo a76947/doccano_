@@ -1,5 +1,13 @@
 <template>
   <v-card>
+    <!-- Error message as pop-up central superior -->
+    <transition name="fade">
+      <div v-if="errorMessage" class="error-message">
+        <v-icon small class="mr-2" color="error">mdi-alert-circle</v-icon>
+        {{ errorMessage }}
+      </div>
+    </transition>
+
     <v-card-title v-if="isProjectAdmin">
       <action-menu
         @upload="$router.push('dataset/import')"
@@ -10,11 +18,27 @@
       />
       <v-btn
         class="text-capitalize ms-2"
+        color="error"
+        outlined
+        @click="updateProjectStatus('closed')"
+      >
+        Fechar Projeto
+      </v-btn>
+      <v-btn
+        class="text-capitalize ms-2"
+        color="success"
+        outlined
+        @click="updateProjectStatus('open')"
+      >
+        Reabrir Projeto
+      </v-btn>
+      <v-btn
+        class="text-capitalize ms-2"
         :disabled="!canDelete"
         outlined
         @click.stop="dialogDelete = true"
       >
-        {{ $t('generic.delete') }}
+        Delete
       </v-btn>
       <v-spacer />
       <v-btn
@@ -23,7 +47,7 @@
         color="error"
         @click="dialogDeleteAll = true"
       >
-        {{ $t('generic.deleteAll') }}
+        Delete All
       </v-btn>
       <v-dialog v-model="dialogDelete">
         <form-delete
@@ -49,6 +73,7 @@
           :project-users="projectUsers"
           @cancel="dialogCompareForm = false"
           @compare="openComparisonDialog"
+          @error="handleCompareError"
         />
       </v-dialog>
     </v-card-title>
@@ -91,55 +116,57 @@
       @click:labeling="movePage"
       @edit="editItem"
       @vote="openVotePage"
+      @assign="assign"
+      @unassign="unassign"
     />
 <v-dialog v-model="dialogCompare" max-width="90%" height="80vh" content-class="comparison-dialog">
-  <v-card class="comparison-card">
-    <v-toolbar dark color="primary" dense>
-      <v-btn icon @click="dialogCompare = false">
-        <v-icon>mdi-close</v-icon>
-      </v-btn>
-      <v-toolbar-title>Annotation Comparison</v-toolbar-title>
-      <v-spacer></v-spacer>
-      <v-chip small class="mr-2">
-        <v-avatar left>
-          <v-icon x-small>mdi-file-document</v-icon>
-        </v-avatar>
-        Document #{{ selectedDocumentId }}
-      </v-chip>
-    </v-toolbar>
-    
-    <!-- Comparison component -->
-    <comparison-view
-      v-if="dialogCompare"
-      :project-id="projectId"
-      :document-id="selectedDocumentId"
-      :user1-id="comparisonUsers.user1"
-      :user2-id="comparisonUsers.user2"
-      :labels="project && project.labels ? project.labels : []"
-      :users="projectUsers || []"
-      @close="dialogCompare = false"
-      @no-annotations="handleNoAnnotations"
-    />
-  </v-card>
-</v-dialog>
+      <v-card class="comparison-card">
+        <v-toolbar dark color="primary" dense>
+          <v-btn icon @click="dialogCompare = false">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
+          <v-toolbar-title>Annotation Comparison</v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-chip small class="mr-2">
+            <v-avatar left>
+              <v-icon x-small>mdi-file-document</v-icon>
+            </v-avatar>
+            Document #{{ selectedDocumentId }}
+          </v-chip>
+        </v-toolbar>
+        
+        <!-- Comparison component -->
+        <comparison-view
+          v-if="dialogCompare"
+          :project-id="projectId"
+          :document-id="selectedDocumentId"
+          :user1-id="comparisonUsers.user1"
+          :user2-id="comparisonUsers.user2"
+          :labels="project && project.labels ? project.labels : []"
+          :users="projectUsers || []"
+          @close="dialogCompare = false"
+          @no-annotations="handleNoAnnotations"
+        />
+      </v-card>
+    </v-dialog>
 
-<!-- Add this for showing no annotations message -->
-<v-snackbar
-  v-model="noAnnotationsSnackbar"
-  :timeout="5000"
-  color="warning"
->
-  {{ noAnnotationsMessage }}
-  <template v-slot:action="{ attrs }">
-    <v-btn
-      text
-      v-bind="attrs"
-      @click="noAnnotationsSnackbar = false"
+    <!-- Add this for showing no annotations message -->
+    <v-snackbar
+      v-model="noAnnotationsSnackbar"
+      :timeout="5000"
+      color="warning"
     >
-      Close
-    </v-btn>
-  </template>
-</v-snackbar>
+      {{ noAnnotationsMessage }}
+      <template #action="{ attrs }">
+        <v-btn
+          text
+          v-bind="attrs"
+          @click="noAnnotationsSnackbar = false"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-card>
 </template>
 
@@ -151,7 +178,7 @@ import { NuxtAppOptions } from '@nuxt/types'
 import DocumentList from '@/components/example/DocumentList.vue'
 import FormAssignment from '~/components/example/FormAssignment.vue'
 import FormDelete from '@/components/example/FormDelete.vue'
-import FormDeleteBulk from '@/components/example/FormDeleteBulk.vue'
+import FormDeleteBulk from '~/components/example/FormDeleteBulk.vue'
 import FormResetAssignment from '~/components/example/FormResetAssignment.vue'
 import ActionMenu from '~/components/example/ActionMenu.vue'
 import AudioList from '~/components/example/AudioList.vue'
@@ -172,7 +199,7 @@ export default Vue.extend({
     FormDelete,
     FormDeleteBulk,
     FormResetAssignment,
-    FormCompareAnnotations, // Add this line
+    FormCompareAnnotations,
     ComparisonView
   },
 
@@ -203,13 +230,22 @@ export default Vue.extend({
         user1: null,
         user2: null
       },
-      projectUsers: [],
+      projectUsers: [] as MemberItem[],
       noAnnotationsSnackbar: false,
       noAnnotationsMessage: '',
+      dialogEdit: false,
+      editedItem: {} as ExampleDTO,
+      page: 1,
+
+      search: '', // Initialize search property
+
+      errorMessage: '',
+      hasError: false,
+
     }
   },
 
-  async fetch() {
+  async fetch(this: NuxtAppOptions) {
     this.isLoading = true
     this.item = await this.$services.example.list(this.projectId, this.$route.query)
     this.user = await this.$repositories.member.fetchMyRole(this.projectId)
@@ -247,14 +283,27 @@ export default Vue.extend({
       } else {
         return 'text'
       }
-    }
+    },
   },
 
   watch: {
     '$route.query': _.debounce(function () {
-      // @ts-ignore
       this.$fetch()
-    }, 1000)
+    }, 1000),
+    
+    errorMessage(newVal) {
+      if (newVal) {
+        this.dialogCompare = false;
+        this.dialogCompareForm = false;
+      }
+    },
+    
+    hasError(newVal) {
+      if (newVal) {
+        this.dialogCompare = false;
+        this.dialogCompareForm = false;
+      }
+    }
   },
 
   async created() {
@@ -278,7 +327,7 @@ export default Vue.extend({
   methods: {
     async remove() {
       await this.$services.example.bulkDelete(this.projectId, this.selected)
-      this.$fetch()
+      await this.$fetch()
       this.dialogDelete = false
       this.selected = []
     },
@@ -303,17 +352,28 @@ export default Vue.extend({
     },
 
     editItem(item: ExampleDTO) {
-      this.$router.push(`dataset/${item.id}/edit`)
+      this.editedItem = Object.assign({}, item)
+      this.dialogEdit = true
     },
 
-    async assign(exampleId: number, userId: number) {
-      await this.$repositories.assignment.assign(this.projectId, exampleId, userId)
-      this.item = await this.$services.example.list(this.projectId, this.$route.query)
+    async assign(exampleId: number, assigneeId: number) {
+      try {
+        await this.$repositories.assignment.assign(this.projectId, exampleId, assigneeId);
+        await this.$fetch(); // Refresh data to reflect changes
+      } catch (error) {
+        console.error('Error assigning member:', error);
+        this.$toasted.error('Failed to assign member.');
+      }
     },
 
     async unassign(assignmentId: string) {
-      await this.$repositories.assignment.unassign(this.projectId, assignmentId)
-      this.item = await this.$services.example.list(this.projectId, this.$route.query)
+      try {
+        await this.$repositories.assignment.unassign(this.projectId, assignmentId);
+        await this.$fetch(); // Refresh data to reflect changes
+      } catch (error) {
+        console.error('Error unassigning member:', error);
+        this.$toasted.error('Failed to unassign member.');
+      }
     },
 
     async assigned() {
@@ -327,107 +387,88 @@ export default Vue.extend({
       this.item = await this.$services.example.list(this.projectId, this.$route.query)
     },
 
-    async openComparisonDialog({ documentId, user1, user2 }) {
-      console.log('Opening comparison dialog with:', { documentId, user1, user2 });
-      
-      try {
-        // Get document text first to make sure document exists
-        await this.$services.example.findById(this.projectId, documentId);
-        
-        // Check if annotations exist
-        let annotationData;
-        try {
-          annotationData = await this.$repositories.annotation.getComparisonData(
-            this.projectId,
-            documentId,
-            user1,
-            user2
-          );
-        } catch (error) {
-          console.error('Error fetching annotations:', error);
-          this.handleNoAnnotations({
-            message: `Error loading annotations: ${error.message}`
-          });
-          return;
-        }
-        
-        // Verify annotations exist for both users
-        if (!annotationData.user1.length && !annotationData.user2.length) {
-          this.handleNoAnnotations({
-            message: 'No annotations found for either user on this document.'
-          });
-          return;
-        } else if (!annotationData.user1.length) {
-          this.handleNoAnnotations({
-            message: `No annotations found for First User on this document.`
-          });
-          return;
-        } else if (!annotationData.user2.length) {
-          this.handleNoAnnotations({
-            message: `No annotations found for Second User on this document.`
-          });
-          return;
-        }
-        
-        // If we get here, both users have annotations, so show the dialog
-        this.selectedDocumentId = documentId;
-        this.comparisonUsers = { user1, user2 };
-        
-        // Only try to get members if admin
-        if (this.isProjectAdmin && (!this.projectUsers || this.projectUsers.length === 0)) {
-          try {
-            this.projectUsers = await this.$repositories.member.list(this.projectId);
-            console.log('Loaded project users:', this.projectUsers.length);
-          } catch (error) {
-            console.warn('Could not load project users:', error);
-            // Continue without user details
-            this.projectUsers = [];
-          }
-        }
-        
-        this.dialogCompare = true;
-        
-      } catch (error) {
-        console.error('Error checking document:', error);
-        this.handleNoAnnotations({
-          message: `Couldnt connect to the database, try again later.`
-        });
-      }
-    },
 
-    // Helper method to get user name
-    getUserName(userId) {
-      // Find user in projectUsers
-      if (this.projectUsers && Array.isArray(this.projectUsers)) {
-        const user = this.projectUsers.find(u => u.id === parseInt(userId) || u.id === userId);
-        if (user && user.username) {
-          return user.username;
-        }
-      }
-      return `User ${userId}`;
-    },
-
-    handleNoAnnotations({ message }) {
-      this.noAnnotationsMessage = message;
-      this.noAnnotationsSnackbar = true;
-      this.dialogCompare = false; // Close the comparison dialog
-    },
-
-    openVotePage(item) {
-      // Make sure item exists and has necessary data
-      if (!item || !item.id) {
-        console.warn('No document selected for voting');
+    openComparisonDialog(this: NuxtAppOptions, 
+      users: { user1: number; user2: number; documentId: number }) {
+      if (this.errorMessage || this.hasError) {
+        this.dialogCompare = false;
         return;
       }
       
-      // Navigate to votacoes page with document info
+
+      this.selectedDocumentId = users.documentId;
+      this.comparisonUsers.user1 = users.user1;
+      this.comparisonUsers.user2 = users.user2;
+      this.dialogCompareForm = false;
+      this.dialogCompare = true;
+    },
+
+
+    handleNoAnnotations(event) {
+      if (!event.response || (event.response.status && event.response.status >= 500)) {
+        this.errorMessage = 'Database unavailable at the moment, please try again later.';
+        setTimeout(() => { this.errorMessage = ''; }, 5000);
+      } else {
+        this.noAnnotationsMessage = event.message;
+        this.noAnnotationsSnackbar = true;
+      }
+
+    },
+
+    openVotePage(item: ExampleDTO) {
+      const link = getLinkToAnnotationPage(this.projectId, this.project.projectType);
       this.$router.push({
-        path: `/projects/${this.projectId}/votacoes`,
-        query: { 
-          documentId: item.id,
-          documentTitle: item.text || `Document #${item.id}`
+        path: this.localePath(link),
+        query: {
+          exampleId: item.id,
+          q: this.search,
+          page: String(this.page),
+          activeTab: 'vote'
         }
-      });
+      })
+    },
+
+    async updateExample() {
+      try {
+        await this.$services.example.update(this.projectId, this.editedItem)
+        this.dialogEdit = false
+        await this.$fetch()
+      } catch (e) {
+        console.log(e)
+      }
+    },
+
+    async updateProjectStatus(newStatus: string) {
+      try {
+        await this.$repositories.project.update(this.projectId, { status: newStatus });
+        await this.$store.dispatch('projects/fetchProject', this.projectId);
+        
+        // If closing project, navigate to projects list
+        if (newStatus === 'closed') {
+          this.$router.push('/projects');
+          this.$toasted.success('Projeto fechado!');
+        } else {
+          // If opening project, navigate to the project's dataset page
+          this.$router.push(`/projects/${this.projectId}/dataset`);
+          this.$toasted.success('Projeto reaberto!');
+        }
+        
+        this.$forceUpdate();
+      } catch (e) {
+        this.$toasted.error('Erro ao atualizar status do projeto.');
+      }
+    },
+    async toggleProjectStatus() {
+      const currentStatus = this.project.status;
+      const newStatus = currentStatus === 'open' ? 'closed' : 'open';
+      await this.updateProjectStatus(newStatus);
+    },
+
+    handleCompareError(errorMessage: string) {
+      this.errorMessage = errorMessage;
+      this.hasError = true;
+      this.dialogCompareForm = false;
+      this.dialogCompare = false;
     }
   }
 })
@@ -460,5 +501,32 @@ export default Vue.extend({
 /* Keep your existing styles for non-fullscreen dialogs */
 ::v-deep .v-dialog:not(.v-dialog--fullscreen) {
   width: 800px;
+}
+
+.error-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  background-color: #fdecea;
+  color: #b71c1c;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.4s ease;
+}
+
+.fade-enter,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

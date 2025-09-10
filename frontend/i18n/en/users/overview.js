@@ -4,7 +4,9 @@ export default {
         deleteUserMessageSingle: 'Are you sure you want to delete this user?',
         deleteUserMessageMultiple: 'Are you sure you want to delete these users?',
         deleteUserSuccessSingle: 'User deleted successfully.',
-        deleteUserSuccessMultiple: 'Users deleted successfully.'
+        deleteUserSuccessMultiple: 'Users deleted successfully.',
+        deleteCurrentUser: 'You cannot delete your own account.',
+        deleteUserWithProjects: "This user cannot be deleted because they have created one or more projects."
 
       },
     createProjectTitle: 'Create a user',

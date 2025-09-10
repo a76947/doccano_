@@ -3,5 +3,6 @@ export default {
   signOut: 'Déconnexion',
   username: "Nom d'utilisateur",
   password: 'Mot de passe',
-  socialLogin: 'Connexion via {provider}'
+  socialLogin: 'Connexion via {provider}',
+  manageUser: 'Gérer Utilisateur'
 }

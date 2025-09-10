@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "vue-toasted": "^1.1.28"
+  }
+}

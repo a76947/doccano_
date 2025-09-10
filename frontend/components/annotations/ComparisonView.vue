@@ -27,7 +27,6 @@
     <div class="px-4 py-2 grey lighten-5 d-flex align-center label-legend">
       <div class="mr-3 grey--text text--darken-1">
         <v-icon x-small class="mr-1">mdi-palette</v-icon>
-        <span class="text-caption font-weight-medium">Labels:</span>
       </div>
       <v-chip
         v-for="label in effectiveLabels"
@@ -59,22 +58,36 @@
           </div>
         </div>
         <div class="document-content" ref="user1Content" @scroll="syncScroll(1, $event)">
-          <div class="document-text">
-            <template v-if="documentText">
-              <span
-                v-for="(segment, i) in user1Segments"
-                :key="i"
-                :class="segment.classes"
-                :style="segment.style"
-                :title="segment.title"
-              >
-                {{ segment.text }}
-              </span>
-            </template>
-            <div v-else class="text-center py-4 grey--text">
-              No document text available
-            </div>
-          </div>
+          <v-card flat class="document-card">
+            <v-card-text class="document-text">
+              <template v-if="documentText">
+                <div class="text-content">
+                  {{ documentText }}
+                </div>
+              </template>
+              <div v-else class="text-center py-4 grey--text">
+                No document text available
+              </div>
+            </v-card-text>
+            <!-- Add label distribution for user 1 -->
+            <v-card-text v-if="user1Annotations.length > 0" class="label-distribution pt-0">
+              <div class="text-subtitle-2 mb-2">Label Distribution:</div>
+              <div class="d-flex flex-wrap">
+                <v-chip
+                  v-for="ann in user1Annotations"
+                  :key="ann.id"
+                  small
+                  class="mr-2 mb-2"
+                  :style="{
+                    backgroundColor: getColorForLabel(ann.label),
+                    color: getContrastColor(getColorForLabel(ann.label))
+                  }"
+                >
+                  {{ ann.label_text || getLabelText(ann.label) }}
+                </v-chip>
+              </div>
+            </v-card-text>
+          </v-card>
         </div>
       </div>
 
@@ -92,22 +105,36 @@
           </div>
         </div>
         <div class="document-content" ref="user2Content" @scroll="syncScroll(2, $event)">
-          <div class="document-text">
-            <template v-if="documentText">
-              <span
-                v-for="(segment, i) in user2Segments"
-                :key="i"
-                :class="segment.classes"
-                :style="segment.style"
-                :title="segment.title"
-              >
-                {{ segment.text }}
-              </span>
-            </template>
-            <div v-else class="text-center py-4 grey--text">
-              No document text available
-            </div>
-          </div>
+          <v-card flat class="document-card">
+            <v-card-text class="document-text">
+              <template v-if="documentText">
+                <div class="text-content">
+                  {{ documentText }}
+                </div>
+              </template>
+              <div v-else class="text-center py-4 grey--text">
+                No document text available
+              </div>
+            </v-card-text>
+            <!-- Add label distribution for user 2 -->
+            <v-card-text v-if="user2Annotations.length > 0" class="label-distribution pt-0">
+              <div class="text-subtitle-2 mb-2">Label Distribution:</div>
+              <div class="d-flex flex-wrap">
+                <v-chip
+                  v-for="ann in user2Annotations"
+                  :key="ann.id"
+                  small
+                  class="mr-2 mb-2"
+                  :style="{
+                    backgroundColor: getColorForLabel(ann.label),
+                    color: getContrastColor(getColorForLabel(ann.label))
+                  }"
+                >
+                  {{ ann.label_text || getLabelText(ann.label) }}
+                </v-chip>
+              </div>
+            </v-card-text>
+          </v-card>
         </div>
       </div>
     </div>
@@ -218,13 +245,8 @@ export default Vue.extend({
       errorMessage: null,
       projectLabels: [], // Add this to store fetched project labels
       apiLoaded: false, // Add this flag
-      // Add default labels for testing
-      defaultLabels: [
-        { id: 1, text: "Good", backgroundColor: "#4CAF50" },
-        { id: 2, text: "Bad", backgroundColor: "#F44336" },
-        { id: 3, text: "MEh", backgroundColor: "#FFC107" }
-      ],
       isScrollingSynced: false,
+      projectType: null, // Add this to store project type
     }
   },
 
@@ -236,7 +258,7 @@ export default Vue.extend({
       } else if (this.labels && this.labels.length > 0) {
         return this.labels;
       }
-      return this.defaultLabels;
+      return [];
     },
     
     agreementPercentage() {
@@ -394,6 +416,28 @@ export default Vue.extend({
     
     // User 1 segments - now using the common base segments
     user1Segments() {
+      if (this.projectType === 'DocumentClassification') {
+        console.log('User 1 segments - document text:', this.documentText) // Debug log
+        // For document classification, show the entire text with category labels
+        return [{
+          text: this.documentText || '',
+          classes: this.user1Annotations.length > 0 ? 'highlight-user1' : '',
+          style: {
+            backgroundColor: this.user1Annotations.length > 0 ? '#ffecb3' : '',
+            borderBottom: this.user1Annotations.length > 0 ? 
+              `2px solid ${this.getColorForLabel(this.user1Annotations[0]?.label)}` : '',
+            padding: '16px',
+            fontSize: '1rem',
+            lineHeight: '1.6',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word'
+          },
+          title: this.user1Annotations.length > 0 ? 
+            this.user1Annotations.map(ann => ann.label_text || this.getLabelText(ann.label)).join(', ') : ''
+        }];
+      }
+      
+      // For sequence labeling, use the existing span-based logic
       return this.baseSegments.map(segment => {
         // Find annotations that cover this segment for user 1
         const activeAnnotations = this.user1Annotations.filter(ann => 
@@ -448,6 +492,27 @@ export default Vue.extend({
     
     // User 2 segments - now using the common base segments
     user2Segments() {
+      if (this.projectType === 'DocumentClassification') {
+        // For document classification, show the entire text with category labels
+        return [{
+          text: this.documentText || '',
+          classes: this.user2Annotations.length > 0 ? 'highlight-user2' : '',
+          style: {
+            backgroundColor: this.user2Annotations.length > 0 ? '#bbdefb' : '',
+            borderBottom: this.user2Annotations.length > 0 ? 
+              `2px solid ${this.getColorForLabel(this.user2Annotations[0]?.label)}` : '',
+            padding: '16px',
+            fontSize: '1rem',
+            lineHeight: '1.6',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word'
+          },
+          title: this.user2Annotations.length > 0 ? 
+            this.user2Annotations.map(ann => ann.label_text || this.getLabelText(ann.label)).join(', ') : ''
+        }];
+      }
+      
+      // For sequence labeling, use the existing span-based logic
       return this.baseSegments.map(segment => {
         // Find annotations that cover this segment for user 2
         const activeAnnotations = this.user2Annotations.filter(ann => 
@@ -585,7 +650,14 @@ export default Vue.extend({
       try {
         // Fetch document text
         const doc = await this.$services.example.findById(this.projectId, this.documentId)
+        console.log('Raw document data:', doc) // Debug log
         this.documentText = doc.text
+        console.log('Set document text:', this.documentText) // Debug log
+        
+        // Fetch project type
+        const project = await this.$services.project.findById(this.projectId)
+        this.projectType = project.project_type
+        console.log('Project type:', this.projectType) // Debug log
         
         try {
           // Try to get annotations using the repository
@@ -596,25 +668,24 @@ export default Vue.extend({
             this.user2Id
           );
           
+          console.log('Annotation data:', annotationData) // Debug log
+          
           // Check if we have annotations from both users
           if (!annotationData.user1.length && !annotationData.user2.length) {
-            // Both users have no annotations, emit an event to notify parent
             this.$emit('no-annotations', {
               message: 'No annotations found for either user on this document.'
             });
-            return; // Exit the method early
+            return;
           } else if (!annotationData.user1.length) {
-            // User 1 has no annotations
             this.$emit('no-annotations', {
               message: `No annotations found for ${this.getSafeUserName(this.user1Id)} on this document.`
             });
-            return; // Exit the method early
+            return;
           } else if (!annotationData.user2.length) {
-            // User 2 has no annotations
             this.$emit('no-annotations', {
               message: `No annotations found for ${this.getSafeUserName(this.user2Id)} on this document.`
             });
-            return; // Exit the method early
+            return;
           }
           
           // If we got here, both users have annotations
@@ -622,25 +693,19 @@ export default Vue.extend({
           this.user2Annotations = annotationData.user2;
           this.apiLoaded = true;
           
-          // If we're showing different users than requested, update debug info
-          if (annotationData.user1.length > 0 
-          && annotationData.user1[0].user !== parseInt(this.user1Id)) {
-            this.errorMessage = `Showing annotations from users 1 and 38 instead of ${this.user1Id} and ${this.user2Id}`;
-          }
+          // Calculate metrics
+          this.calculateAgreementMetrics();
         } catch (error) {
           console.error('Error fetching annotations:', error);
           this.$emit('no-annotations', {
             message: `Error loading annotations: ${error.message}`
           });
-          return; // Exit the method early instead of using test data
+          return;
         }
-        
-        // Calculate metrics
-        this.calculateAgreementMetrics();
       } catch (error) {
         console.error('Error:', error);
         this.$emit('no-annotations', {
-          message: `Couldnt connect to the database, try again later.`
+          message: `Couldn't connect to the database, try again later.`
         });
       } finally {
         this.loading = false;
@@ -671,33 +736,55 @@ export default Vue.extend({
       this.user1OnlyCount = 0;
       this.user2OnlyCount = 0;
       
-      // Check for matching annotations
-      for (const ann1 of this.user1Annotations) {
-        const match = this.user2Annotations.find(
-          ann2 => 
-            ann1.start_offset === ann2.start_offset && 
-            ann1.end_offset === ann2.end_offset && 
-            ann1.label === ann2.label
-        );
+      if (this.projectType === 'DocumentClassification') {
+        // For document classification, compare categories
+        const user1Labels = new Set(this.user1Annotations.map(ann => ann.label));
+        const user2Labels = new Set(this.user2Annotations.map(ann => ann.label));
         
-        if (match) {
-          this.matchingCount++;
-        } else {
-          this.user1OnlyCount++;
+        // Count matching labels
+        for (const label of user1Labels) {
+          if (user2Labels.has(label)) {
+            this.matchingCount++;
+          } else {
+            this.user1OnlyCount++;
+          }
         }
-      }
-      
-      // Count annotations unique to user 2
-      for (const ann2 of this.user2Annotations) {
-        const match = this.user1Annotations.find(
-          ann1 => 
-            ann2.start_offset === ann1.start_offset && 
-            ann2.end_offset === ann1.end_offset && 
-            ann2.label === ann1.label
-        );
         
-        if (!match) {
-          this.user2OnlyCount++;
+        // Count labels unique to user 2
+        for (const label of user2Labels) {
+          if (!user1Labels.has(label)) {
+            this.user2OnlyCount++;
+          }
+        }
+      } else {
+        // For sequence labeling, compare spans
+        for (const ann1 of this.user1Annotations) {
+          const match = this.user2Annotations.find(
+            ann2 => 
+              ann1.start_offset === ann2.start_offset && 
+              ann1.end_offset === ann2.end_offset && 
+              ann1.label === ann2.label
+          );
+          
+          if (match) {
+            this.matchingCount++;
+          } else {
+            this.user1OnlyCount++;
+          }
+        }
+        
+        // Count annotations unique to user 2
+        for (const ann2 of this.user2Annotations) {
+          const match = this.user1Annotations.find(
+            ann1 => 
+              ann2.start_offset === ann1.start_offset && 
+              ann2.end_offset === ann1.end_offset && 
+              ann2.label === ann1.label
+          );
+          
+          if (!match) {
+            this.user2OnlyCount++;
+          }
         }
       }
     },
@@ -864,15 +951,29 @@ export default Vue.extend({
   padding: 16px; /* Ensure consistent padding */
 }
 
+.document-card {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
 .document-text {
-  font-family: 'Roboto Mono', monospace;
-  line-height: 1.7;
-  white-space: pre-wrap; /* Allow text to wrap */
-  font-size: 0.9rem;
-  padding-bottom: 12px; /* Add padding for the scrollbar */
-  word-break: break-word; /* Break long words if needed */
-  width: 100%; /* Use full width */
-  display: inline-block; /* Important for consistent rendering */
+  font-family: 'Roboto', sans-serif;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  font-size: 1rem;
+  padding: 0;
+  word-break: break-word;
+  background-color: #fafafa;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.label-distribution {
+  background-color: #ffffff;
+  border-top: 1px solid #e0e0e0;
+  padding: 16px;
+  margin-top: 16px;
 }
 
 .agreement-stats-bar {
@@ -993,5 +1094,16 @@ export default Vue.extend({
   100% {
     opacity: 0.6;
   }
+}
+
+.text-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: rgba(0, 0, 0, 0.87);
+  padding: 16px;
+  background-color: #fafafa;
+  border-radius: 4px;
 }
 </style>

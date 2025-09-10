@@ -3,6 +3,9 @@ import os
 from django.conf import settings
 from django.contrib.auth.middleware import RemoteUserMiddleware
 from django.utils.deprecation import MiddlewareMixin
+from django.db import connection
+from django.db.utils import OperationalError
+from django.http import JsonResponse
 
 
 class RangesMiddleware(MiddlewareMixin):
@@ -75,3 +78,30 @@ class HeaderAuthMiddleware(RemoteUserMiddleware):
             return []
         else:
             return groups_header.split(settings.HEADER_AUTH_GROUPS_SEPERATOR)
+
+
+class DatabaseHealthMiddleware(MiddlewareMixin):
+    """Return 503 Service Unavailable when the application cannot reach the DB.
+
+    This middleware tries to open a DB connection for every incoming request that
+    reaches Django. If the connection fails (e.g. the DB service is down), a JSON
+    response with HTTP status 503 is returned so that clients can react (for
+    example, by showing a pop-up message).
+    """
+
+    def process_request(self, request):
+        # Import lazily to avoid circular-import issues and unnecessary cost when
+        # Django is running without a DB (e.g. some management commands).
+        from django.db import connection
+        from django.db.utils import OperationalError
+        from django.http import JsonResponse
+
+        try:
+            # ``ensure_connection`` will try to connect only if the connection is
+            # unusable or closed, therefore the overhead is minimal once the DB
+            # is healthy.
+            connection.ensure_connection()
+        except OperationalError:
+            # Database is down. Signal the problem so that reverse-proxies,
+            # monitoring and the front-end can handle it properly.
+            return JsonResponse({"detail": "Database unavailable"}, status=503)

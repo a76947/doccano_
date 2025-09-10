@@ -9,7 +9,7 @@ from projects.permissions import IsProjectMember
 from examples.models import Example
 # Import the correct model for your annotations
 # This may vary depending on project type - adjust as needed
-from labels.models import Span, CategoryType, TextLabel
+from labels.models import Span, CategoryType, TextLabel, Category
 from django.db.models import Q
 
 class UserAnnotationsAPI(APIView):
@@ -82,17 +82,19 @@ class UserAnnotationsAPI(APIView):
                 
         elif project_type == 'DocumentClassification':
             # Get document classification annotations
-            annotations = CategoryType.objects.filter(
+            annotations = Category.objects.filter(
                 example=example,
                 user_id=user_id
-            )
+            ).select_related('label')  # Add select_related to optimize the query
             
             # Serialize the categories
             result = []
             for category in annotations:
                 result.append({
                     'id': category.id,
-                    'label': category.label_id
+                    'label': category.label_id,
+                    'label_text': category.label.text if category.label else None,
+                    'document_text': example.text
                 })
                 
         elif project_type == 'Seq2seq':

@@ -1,62 +1,70 @@
 <template>
-  <!-- Um único root element -->
-  <v-card>
-    <!-- Título e botões se for staff -->
-    <v-card-title v-if="isStaff">
-      <v-btn
-        class="text-capitalize"
-        color="primary"
-        @click.stop="$router.push('/users/create')"
-      >
-        {{ $t('generic.create') }}
-      </v-btn>
+  <div>
+    <v-card>
+      <v-card-title v-if="isStaff">
+        <v-btn
+          class="text-capitalize"
+          color="primary"
+          @click.stop="$router.push('users/create')"
+        >
+          {{ $t('generic.create') }}
+        </v-btn>
+        <v-btn
+          class="text-capitalize ms-2"
+          color="primary"
+          :disabled="!canEdit"
+          @click.stop="edit"
+        >
+          Edit
+        </v-btn>
+        <v-btn
+          class="text-capitalize ms-2"
+          :disabled="!canDelete"
+          outlined
+          @click.stop="onDeleteClick"
+        >
+          {{ $t('generic.delete') }}
+        </v-btn>
+      </v-card-title>
 
-      <v-btn
-        class="text-capitalize ms-2"
-        color="primary"
-        :disabled="!canEdit"
-        @click.stop="dialogEdit = true"
-      >
-        Edit
-      </v-btn>
+      <!-- ✅ Mensagem de erro como pop-up central superior -->
+      <transition name="fade">
+        <div v-if="errorMessage" class="error-message">
+          <v-icon small class="mr-2" color="error">mdi-alert-circle</v-icon>
+          {{ errorMessage }}
+        </div>
+      </transition>
 
-      <v-btn
-        class="text-capitalize ms-2"
-        :disabled="!canDelete"
-        outlined
-        @click.stop="dialogDelete = true"
-      >
-        {{ $t('generic.delete') }}
-      </v-btn>
+      <!-- ✅ Mensagem de sucesso com transição fade -->
+      <transition name="fade">
+        <div v-if="showSnackbar" class="success-message">
+          <v-icon small class="mr-2" color="success">mdi-check-circle</v-icon>
+          {{ successMessage }}
+        </div>
+      </transition>
 
-      <!-- Diálogo de remoção -->
-      <v-dialog v-model="dialogDelete" width="400">
-        <form-delete
-          :selected="selected"
-          @cancel="dialogDelete = false"
-          @remove="remove"
-        />
-      </v-dialog>
-    </v-card-title>
+      <!-- LISTA DE USUÁRIOS -->
+      <users-list
+        v-if="!isLoading && users.items.length > 0"
+        v-model="selected"
+        :items="users.items"
+        :is-loading="isLoading"
+        :total="users.items.length"
+        @update:query="updateQuery"
+        @input="onSelectionChange"
+      />
+    </v-card>
 
-    <!-- Mensagem de sucesso (snackbar) com transição fade -->
-    <transition name="fade">
-      <div v-if="showSnackbar" class="success-message">
-        <v-icon small class="mr-2" color="success">mdi-check-circle</v-icon>
-        {{ successMessage }}
-      </div>
-    </transition>
-
-    <!-- LISTA DE USUÁRIOS -->
-    <users-list
-      v-if="!isLoading && users.items.length > 0"
-      v-model="selected"
-      :items="users.items"
-      :is-loading="isLoading"
-      :total="users.items.length"
-      @update:query="updateQuery"
-      @input="onSelectionChange"
-    />
+    <!-- Diálogo de remoção -->
+    <v-dialog v-model="dialogDelete" width="400">
+      <form-delete
+        :selected="selected"
+        :current-user="currentUser"
+        :has-projects="hasSelectedUserWithProjects"
+        @cancel="dialogDelete = false"
+        @remove="remove"
+      />
+    </v-dialog>
 
     <!-- DIÁLOGO DE EDIÇÃO -->
     <v-dialog v-model="dialogEdit" max-width="600px">
@@ -69,7 +77,7 @@
         />
       </v-card>
     </v-dialog>
-  </v-card>
+  </div>
 </template>
 
 <script lang="ts">
@@ -107,7 +115,9 @@ export default Vue.extend({
 
       // Snackbar de sucesso
       successMessage: '',
-      showSnackbar: false
+      errorMessage: '',
+      showSnackbar: false,
+      usersWithProjects: [] as number[]
     }
   },
 
@@ -117,26 +127,32 @@ export default Vue.extend({
       this.users = await this.$services.user.list(
         this.$route.query as unknown as SearchQueryData
       )
+      const ids = await this.$services.project.getUsersWithProjects()
+      this.usersWithProjects = ids
     } catch (e) {
-      console.error('Erro ao carregar usuários:', e)
+      console.error('Erro ao carregar usuários ou projetos:', e)
     } finally {
       this.isLoading = false
     }
   },
 
   computed: {
-    ...mapGetters({
-      isStaff: 'auth/isStaff',
-      getUserId: 'auth/getUserId'
-    }),
-
-    canDelete(): boolean {
+    ...mapGetters('auth', ['isStaff']),
+    currentUser() {
+      const id = this.$store.getters['auth/getUserId']
+      const username = this.$store.getters['auth/getUsername']
+      return { id, username }
+    },
+    canDelete() {
       return this.selected.length > 0
     },
-    canEdit(): boolean {
+    canEdit() {
       return this.selected.length === 1
     },
-    selectedUser(): UserItem | null {
+    hasSelectedUserWithProjects() {
+      return this.selected.some(user => this.usersWithProjects.includes(user.id))
+    },
+    selectedUser() {
       return this.selected.length === 1 ? this.selected[0] : null
     }
   },
@@ -157,28 +173,72 @@ export default Vue.extend({
       this.selected = selectedItems
     },
 
+    onDeleteClick() {
+      const currentUserId = this.currentUser?.id
+
+      const hasOwnUser = this.selected.some(user => user.id === currentUserId)
+      const hasProjects = this.selected.some(user => this.usersWithProjects.includes(user.id))
+
+      this.errorMessage = ''
+
+      if (hasOwnUser) {
+        this.errorMessage = this.$t('UserOverview.overview.deleteCurrentUser') as string
+        setTimeout(() => (this.errorMessage = ''), 3000)
+        return
+      }
+
+      if (hasProjects) {
+        this.errorMessage = this.$t('UserOverview.overview.deleteUserWithProjects') as string
+        setTimeout(() => (this.errorMessage = ''), 3000)
+        return
+      }
+
+      this.dialogDelete = true
+    },
+
     // Método de remoção real (do HEAD)
     async remove() {
-      console.log('Removendo:', this.selected)
       try {
-        const isSingle = this.selected.length === 1
+        const currentUser = this.currentUser
 
-        // Deleta cada user selecionado
-        for (const user of this.selected) {
-          await this.$services.user.delete(user.id)
+        if (!currentUser) {
+          console.error('🚨 currentUser ainda está undefined!')
+          return
+        }
+
+        const usersToDelete = this.selected.filter(user => user.id !== currentUser.id)
+
+        if (usersToDelete.length === 0) {
+          console.warn('Tentativa de apagar o próprio utilizador foi evitada.')
+          this.dialogDelete = false
+          return
+        }
+
+        for (const user of usersToDelete) {
+          try {
+            await this.$services.user.delete(user.id)
+          } catch (error) {
+            if (!error.response || (error.response.status && error.response.status >= 500)) {
+              this.errorMessage = 'Database unavailable at the moment, please try again later.'
+            } else if (error && typeof error === 'object' && 'response' in error) {
+              this.errorMessage = (error as any).response.data?.detail || 'Erro ao eliminar utilizador.'
+            } else {
+              this.errorMessage = this.$t('UserOverview.overview.deleteUserError') as string
+            }
+            setTimeout(() => (this.errorMessage = ''), 3000)
+            return
+          }
         }
 
         // Exibe snackbar
         this.successMessage = this.$t(
-          isSingle
+          usersToDelete.length === 1
             ? 'UserOverview.overview.deleteUserSuccessSingle'
             : 'UserOverview.overview.deleteUserSuccessMultiple'
         ) as string
 
         this.showSnackbar = true
-        setTimeout(() => {
-          this.showSnackbar = false
-        }, 3000)
+        setTimeout(() => (this.showSnackbar = false), 3000)
 
         // Recarrega
         await this.$fetch()
@@ -196,6 +256,11 @@ export default Vue.extend({
       // Recarrega a lista
       this.$fetch()
 
+      // Mensagem de sucesso
+      this.successMessage = 'Utilizador atualizado com sucesso.'
+      this.showSnackbar = true
+      setTimeout(() => (this.showSnackbar = false), 3000)
+
       // Se for o user logado que foi editado, forçamos logout (opcional)
       if (this.selectedUser && this.selectedUser.id === this.getUserId) {
         console.log('Editaste o teu próprio perfil -> logout automático...')
@@ -205,6 +270,12 @@ export default Vue.extend({
 
     onEditCancel() {
       this.dialogEdit = false
+    },
+
+    edit() {
+      if (this.canEdit) {
+        this.dialogEdit = true
+      }
     }
   }
 })
@@ -212,15 +283,20 @@ export default Vue.extend({
 
 <style scoped>
 .success-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
   background-color: #e6f4ea;
   color: #2e7d32;
-  padding: 12px 16px;
-  border-radius: 6px;
-  margin: 16px;
+  padding: 12px 24px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   font-weight: 500;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
 }
 
 /* Fade para o snackbar */
@@ -231,5 +307,22 @@ export default Vue.extend({
 .fade-enter,
 .fade-leave-to {
   opacity: 0;
+}
+
+.error-message {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  background-color: #fdecea;
+  color: #b71c1c;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  pointer-events: none;
 }
 </style>

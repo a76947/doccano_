@@ -129,4 +129,18 @@ export class ProjectApplicationService {
       throw new Error(e.response.data.detail)
     }
   }
+
+  public async getUsersWithProjects(): Promise<number[]> {
+    return await this.repository.getUsersWithProjects()
+  }
+
+  public async getMembers(projectId: number): Promise<any[]> {
+    try {
+      return await this.repository.getMembers(projectId);
+      
+    } catch (error) {
+      console.error('Erro ao buscar membros do projeto:', error);
+      return [];
+    }
+  }
 }
